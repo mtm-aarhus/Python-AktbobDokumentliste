@@ -34,8 +34,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
 
-    log = False
-    send_email = False
+    log = True
+    send_email = True
 
     #Getting credentials
     API_url = orchestrator_connection.get_constant("AktbobSharePointURL").value
