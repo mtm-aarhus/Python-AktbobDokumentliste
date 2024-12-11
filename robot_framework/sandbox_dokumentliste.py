@@ -6,8 +6,8 @@ import json
 
 orchestrator_connection = OrchestratorConnection("Dokumentliste i Python", os.getenv('OpenOrchestratorSQL'),os.getenv('OpenOrchestratorKey'), None)
 queue_json = {
-        "SagsID": "AKT-2024-000915",#"GEO-2024-199848",
-        "MailModtager": "UdviklerMail",
+        "SagsID": "AKT-2024-000915",
+        "MailModtager": "balas@aarhus.dk",
         "PodioID": "2923285810",
         "DeskProID": "2070",
         "DeskProTitel": "Test",
