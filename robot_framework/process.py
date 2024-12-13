@@ -536,22 +536,22 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     main_folder = root_folder.folders.add(Mappe1)
     ctx.execute_query()
     
-    # Get the "Edit" role definition
-    role_def = ctx.web.role_definitions.get_by_name("Edit")
-    ctx.load(role_def)
-    ctx.execute_query()
+    # # Get the "Edit" role definition
+    # role_def = ctx.web.role_definitions.get_by_name("Edit")
+    # ctx.load(role_def)
+    # ctx.execute_query()
 
-    # Ensure the user exists and get their ID
-    user = ctx.web.ensure_user(MailModtager)
-    ctx.load(user)
-    ctx.execute_query()
+    # # Ensure the user exists and get their ID
+    # user = ctx.web.ensure_user(MailModtager)
+    # ctx.load(user)
+    # ctx.execute_query()
 
-    # Grant the user edit permissions to the folder
-    root_folder.list_item_all_fields.role_assignments.add(
-        principal_id=user.id,
-        role_def_id=role_def.id
-    )
-    ctx.execute_query()
+    # # Grant the user edit permissions to the folder
+    # root_folder.list_item_all_fields.role_assignments.add(
+    #     principal_id=user.id,
+    #     role_def_id=role_def.id
+    # )
+    # ctx.execute_query()
 
     # Create subfolder inside main folder
     subfolder = main_folder.folders.add(Mappe2)
