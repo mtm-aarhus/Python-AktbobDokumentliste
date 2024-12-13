@@ -16,11 +16,12 @@ from urllib.parse import quote
 from datetime import datetime
 from office365.runtime.auth.user_credential import UserCredential
 from office365.sharepoint.client_context import ClientContext
+from office365.sharepoint.permissions.base_permissions import BasePermissions
+from office365.sharepoint.permissions.base_permissions import BasePermissions
 from requests_ntlm import HttpNtlmAuth
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
-import shutil
 import smtplib
 from email.message import EmailMessage
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -536,22 +537,33 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     main_folder = root_folder.folders.add(Mappe1)
     ctx.execute_query()
     
-    # # Get the "Edit" role definition
-    # role_def = ctx.web.role_definitions.get_by_name("Edit")
-    # ctx.load(role_def)
-    # ctx.execute_query()
+    ##################################################
+    ######################################################
+    ####################################################
+    # Acces to folder for mail recipient
+    role_type = "Read" 
 
-    # # Ensure the user exists and get their ID
-    # user = ctx.web.ensure_user(MailModtager)
-    # ctx.load(user)
-    # ctx.execute_query()
+    # Load the folder
+    root_folder.list_item_all_fields.load()
+    ctx.execute_query()
 
-    # # Grant the user edit permissions to the folder
-    # root_folder.list_item_all_fields.role_assignments.add(
-    #     principal_id=user.id,
-    #     role_def_id=role_def.id
-    # )
-    # ctx.execute_query()
+    # Ensure the user exists
+    user = ctx.web.ensure_user(MailModtager)  # Adds or retrieves the user by email
+    user.load()
+    ctx.execute_query()
+
+    # Grant permissions to the user
+    roles = ctx.web.role_definitions.get_by_type(role_type)
+    ctx.execute_query()
+
+    root_folder.list_item_all_fields.role_assignments.add(
+        principal=user,
+        role_definition_bindings=[roles]
+    )
+    ctx.execute_query()
+    ################################
+    ###################################
+    #######################################################
 
     # Create subfolder inside main folder
     subfolder = main_folder.folders.add(Mappe2)
