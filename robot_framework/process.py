@@ -56,8 +56,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     RobotUsername = RobotCredentials.username
     RobotPassword = RobotCredentials.password
 
-    MailModtager =  UdviklerMail
-
     # Define the JSON object (queue_json)
     queue_json = json.loads(queue_element.data)
 
@@ -536,6 +534,23 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Create main folder
     root_folder = ctx.web.get_folder_by_server_relative_url(parent_folder_name)
     main_folder = root_folder.folders.add(Mappe1)
+    ctx.execute_query()
+    
+    # Get the "Edit" role definition
+    role_def = ctx.web.role_definitions.get_by_name("Edit")
+    ctx.load(role_def)
+    ctx.execute_query()
+
+    # Ensure the user exists and get their ID
+    user = ctx.web.ensure_user(MailModtager)
+    ctx.load(user)
+    ctx.execute_query()
+
+    # Grant the user edit permissions to the folder
+    root_folder.list_item_all_fields.role_assignments.add(
+        principal_id=user.id,
+        role_def_id=role_def.id
+    )
     ctx.execute_query()
 
     # Create subfolder inside main folder
