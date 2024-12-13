@@ -549,7 +549,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     # Ensure the user exists
     user = ctx.web.ensure_user(MailModtager)  # Adds or retrieves the user by email
-    user.load()
     ctx.execute_query()
 
     # Grant permissions to the user
