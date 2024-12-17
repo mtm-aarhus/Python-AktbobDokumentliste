@@ -16,8 +16,6 @@ from urllib.parse import quote
 from datetime import datetime
 from office365.runtime.auth.user_credential import UserCredential
 from office365.sharepoint.client_context import ClientContext
-from office365.sharepoint.permissions.base_permissions import BasePermissions
-from office365.sharepoint.permissions.base_permissions import BasePermissions
 from requests_ntlm import HttpNtlmAuth
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
@@ -532,37 +530,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     parent_folder_name = API_url.split(".com")[-1] + "/Delte dokumenter/Dokumentlister" 
 
-    # Create main folder
+        # Create main folder
     root_folder = ctx.web.get_folder_by_server_relative_url(parent_folder_name)
-    main_folder = root_folder.folders.add(Mappe1)
-    ctx.execute_query()
-    
-    ##################################################
-    ######################################################
-    ####################################################
-    # Acces to folder for mail recipient
-    role_type = "Read" 
-
-    # Load the folder
-    root_folder.list_item_all_fields.load()
+    main_folder = root_folder.folders.add("Mappe1")  # Name of the new folder
     ctx.execute_query()
 
-    # Ensure the user exists
-    user = ctx.web.ensure_user(MailModtager)  # Adds or retrieves the user by email
-    ctx.execute_query()
-
-    # Grant permissions to the user
-    roles = ctx.web.role_definitions.get_by_type(role_type)
-    ctx.execute_query()
-
-    root_folder.list_item_all_fields.role_assignments.add(
-        principal=user,
-        role_definition_bindings=[roles]
-    )
-    ctx.execute_query()
-    ################################
-    ###################################
-    #######################################################
 
     # Create subfolder inside main folder
     subfolder = main_folder.folders.add(Mappe2)
@@ -581,6 +553,19 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     if log:
         orchestrator_connection.log_info("Folders created in sharepoint")
+
+    # Step 1: Load the file
+    file = ctx.web.get_file_by_server_relative_url(file_path)
+    ctx.execute_query()
+
+    # Step 2: Share the file with the specific user via email
+    result = file.share(MailModtager, "Edit").execute_query()
+
+    # Step 3: Retrieve the sharing result
+    print(f"File successfully shared with {MailModtager}")
+    print("Sharing Results:")
+    print(result.value)
+
 
     # SMTP Configuration (from your provided details)
     SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
