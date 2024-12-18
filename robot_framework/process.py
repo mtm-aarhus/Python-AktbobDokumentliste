@@ -26,6 +26,8 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font, Protection
 from PIL import ImageFont, ImageDraw, Image
+from office365.sharepoint.sharing.links.kind import SharingLinkKind
+from office365.sharepoint.webs.web import Web
 
 
 # pylint: disable-next=unused-argument
@@ -555,17 +557,15 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         orchestrator_connection.log_info("Folders created in sharepoint")
 
     # Step 1: Load the file
-    file = ctx.web.get_file_by_server_relative_url(file_path)
+    remote_file = ctx.web.get_file_by_server_relative_url(excel_file_path)
     ctx.execute_query()
 
-    # Step 2: Share the file with the specific user via email
-    result = file.share(MailModtager, "Edit").execute_query()
+    # Step 2: Create a sharing link (e.g., Anonymous View Link)
+    result = remote_file.share_link(SharingLinkKind.OrganizationEdit).execute_query()
+    link_url = result.value.sharingLinkInfo.Url
 
-    # Step 3: Retrieve the sharing result
-    print(f"File successfully shared with {MailModtager}")
-    print("Sharing Results:")
-    print(result.value)
-
+    # Step 3: Verify the sharing link
+    result = Web.get_sharing_link_kind(ctx, link_url).execute_query()
 
     # SMTP Configuration (from your provided details)
     SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
@@ -591,7 +591,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             <body>
                 <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Sæt herefter robotten igang med at flytte filerne til FilArkiv når du har udfyldt hele listen.</p>
                 <br>
-                <a href="{sharepoint_link}">Link til dokumentlisten</a>
+                <a href="{link_url}">Link til dokumentlisten</a>
                 <br><br>
                 <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
                 <br>
