@@ -537,7 +537,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     main_folder = root_folder.folders.add("Mappe1")  # Name of the new folder
     ctx.execute_query()
 
-
     # Create subfolder inside main folder
     subfolder = main_folder.folders.add(Mappe2)
     ctx.execute_query()
@@ -556,12 +555,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if log:
         orchestrator_connection.log_info("Folders created in sharepoint")
 
-    # Step 2: Create a sharing link (e.g., Anonymous View Link)
-    result = root_folder.share_link(SharingLinkKind.OrganizationEdit).execute_query()
-    link_url = result.value.sharingLinkInfo.Url
+    # # Step 2: Create a sharing link (e.g., Anonymous View Link)
+    # result = root_folder.share_link(SharingLinkKind.OrganizationEdit).execute_query()
+    # link_url = result.value.sharingLinkInfo.Url
 
-    # Step 3: Verify the sharing link
-    result = Web.get_sharing_link_kind(ctx, link_url).execute_query()
+    # # Step 3: Verify the sharing link
+    # result = Web.get_sharing_link_kind(ctx, link_url).execute_query()
 
     # SMTP Configuration (from your provided details)
     SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
