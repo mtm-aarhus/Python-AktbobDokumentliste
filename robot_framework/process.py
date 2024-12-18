@@ -556,12 +556,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if log:
         orchestrator_connection.log_info("Folders created in sharepoint")
 
-    # Step 1: Load the file
-    remote_file = ctx.web.get_file_by_server_relative_url(excel_file_path)
-    ctx.execute_query()
-
     # Step 2: Create a sharing link (e.g., Anonymous View Link)
-    result = remote_file.share_link(SharingLinkKind.OrganizationEdit).execute_query()
+    result = root_folder.share_link(SharingLinkKind.OrganizationEdit).execute_query()
     link_url = result.value.sharingLinkInfo.Url
 
     # Step 3: Verify the sharing link
@@ -621,15 +617,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if log:
         orchestrator_connection.log_info("Sending email")
 
-    base_url = API_url 
-
-
     # Encode folder names for URL safety
     Mappe1_encoded = quote(Mappe1)
     Mappe2_encoded = quote(Mappe2)
 
     # Construct the full SharePoint URL
-    SharepointLink = f"{base_url}/Delte%20dokumenter/Dokumentlister/{Mappe1_encoded}/{Mappe2_encoded}"
+    SharepointLink = f"{API_url}/Delte%20dokumenter/Dokumentlister/{Mappe1_encoded}/{Mappe2_encoded}"
 
     if send_email:
         send_success_email(MailModtager, SagsID, DeskProID, SharepointLink)
