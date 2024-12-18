@@ -587,7 +587,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             <body>
                 <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Sæt herefter robotten igang med at flytte filerne til FilArkiv når du har udfyldt hele listen.</p>
                 <br>
-                <a href="{link_url}">Link til dokumentlisten</a>
+                <a href="{sharepoint_link}">Link til dokumentlisten</a>
                 <br><br>
                 <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
                 <br>
@@ -625,7 +625,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     SharepointLink = f"{API_url}/Delte%20dokumenter/Dokumentlister/{Mappe1_encoded}/{Mappe2_encoded}"
 
     if send_email:
-        send_success_email(MailModtager, SagsID, DeskProID, SharepointLink)
+        send_success_email(MailModtager, SagsID, DeskProID, link_url)
 
     if log:
         orchestrator_connection.log_info("Tilføjer link til Podio")
