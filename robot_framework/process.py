@@ -23,7 +23,6 @@ from openpyxl.worksheet.datavalidation import DataValidation
 import smtplib
 from email.message import EmailMessage
 from openpyxl.worksheet.table import Table, TableStyleInfo
-from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font, Protection
 from PIL import ImageFont, ImageDraw, Image
 from office365.sharepoint.sharing.links.kind import SharingLinkKind
@@ -273,8 +272,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
-
-
 
     # Define the font path and size
     FONT_PATH = "calibri.ttf"  # Replace with the path to your Calibri or desired font
@@ -556,7 +553,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         orchestrator_connection.log_info("Folders created in sharepoint")
 
     # Step 2: Create a sharing link (e.g., Anonymous View Link)
-    result = root_folder.share_link(SharingLinkKind.Direct).execute_query()
+    result = root_folder.share_link(SharingLinkKind.OrganizationEdit).execute_query()
     link_url = result.value.sharingLinkInfo.Url
 
     # Step 3: Verify the sharing link
