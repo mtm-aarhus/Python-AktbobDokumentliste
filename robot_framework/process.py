@@ -556,7 +556,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         orchestrator_connection.log_info("Folders created in sharepoint")
 
     # Step 2: Create a sharing link (e.g., Anonymous View Link)
-    result = root_folder.share_link(SharingLinkKind.OrganizationEdit).execute_query()
+    result = root_folder.share_link(SharingLinkKind.Direct).execute_query()
     link_url = result.value.sharingLinkInfo.Url
 
     # Step 3: Verify the sharing link
