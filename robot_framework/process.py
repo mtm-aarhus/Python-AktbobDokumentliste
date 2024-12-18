@@ -39,7 +39,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     #Getting credentials
     API_url = orchestrator_connection.get_constant("AktbobSharePointURL").value
-    API_url = orchestrator_connection.get_constant("LauraTestSharepointURL")
+    API_url = orchestrator_connection.get_constant("LauraTestSharepointURL").value
     API_credentials = orchestrator_connection.get_credential("AktbobAPIKey")
     API_username = API_credentials.username ## Instead use endpoint
     API_password = API_credentials.password
