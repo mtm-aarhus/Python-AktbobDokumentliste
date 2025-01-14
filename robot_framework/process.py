@@ -60,11 +60,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     queue_json = json.loads(queue_element.data)
 
     # Retrieve elements from queue_json
-    SagsID = queue_json["SagsID"]
-    MailModtager = queue_json["MailModtager"]
+    SagsID = queue_json["SagsNummer"]
+    MailModtager = queue_json["Email"]
     PodioID = queue_json["PodioID"]
-    DeskProID = queue_json["DeskProID"]
-    DeskProTitel = queue_json["DeskProTitel"]
+    DeskProID = queue_json["DeskproID"]
+    DeskProTitel = queue_json["DeskproTitel"]
     url = GOAPI_URL + "/_goapi/Cases/Metadata/" + SagsID
 
     if log:
