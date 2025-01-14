@@ -64,7 +64,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     MailModtager = queue_json["Email"]
     PodioID = queue_json["PodioID"]
     DeskProID = queue_json["DeskproID"]
-    DeskProTitel = queue_json["DeskproTitel"]
+    DeskProTitel = queue_json["Titel"]
     url = GOAPI_URL + "/_goapi/Cases/Metadata/" + SagsID
 
     if log:
