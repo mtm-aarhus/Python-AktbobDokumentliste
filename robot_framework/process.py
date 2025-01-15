@@ -44,7 +44,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     API_password = API_credentials.password
 
     #Define developer mail
-    UdviklerMail = orchestrator_connection.get_constant("jadt").value
+    UdviklerMail = orchestrator_connection.get_constant("balas").value
 
     GOAPILIVECRED = orchestrator_connection.get_credential("GOAktApiUser")
     GOAPILIVECRED_username = GOAPILIVECRED.username
@@ -496,8 +496,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Save the formatted Excel file
     workbook.save(excel_file_path)
 
-    Mappe1 = DeskProID +" - " + DeskProTitel
-    Mappe2 = SagsID + " - " + SagsTitel
+    Mappe1 = str(DeskProID) +" - " + str(DeskProTitel)
+    Mappe2 = str(SagsID) + " - " + str(SagsTitel)
    
     # Authenticate to SharePoint using Office365 credentials
     credentials = UserCredential(RobotUsername, RobotPassword)
