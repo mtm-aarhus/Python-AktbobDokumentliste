@@ -31,6 +31,7 @@ from office365.sharepoint.webs.web import Web
 
 # pylint: disable-next=unused-argument
 def process(orchestrator_connection: OrchestratorConnection, queue_element: QueueElement | None = None) -> None:
+   
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
 
@@ -56,7 +57,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     RobotUsername = RobotCredentials.username
     RobotPassword = RobotCredentials.password
 
-    # Define the JSON object (queue_json)
     queue_json = json.loads(queue_element.data)
 
     # Retrieve elements from queue_json
@@ -127,7 +127,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     columns = [
         "Akt ID", "Dok ID", "Dokumenttitel", "Dokumentkategori", "Dokumentdato", 
         "Bilag til Dok ID", "Bilag", "Link til dokument", 
-        "Omfattet af ansøgning (Ja/Nej)", "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)", 
+        "Omfattet af ansøgningen? (Ja/Nej)", "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)", 
         "Begrundelse hvis nej eller delvis"
     ]
 
@@ -168,7 +168,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
             # Handle the response
             Dokumentliste = response.text  # Extract the content
-           
+            
         #If it is the first run
         else:
             url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
@@ -261,13 +261,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     "Dokumentdato": DokumentDato,
                     "Bilag": BilagChild,
                     "Bilag til Dok ID": Bilag,
-                    "Link til dokument": DokumentURL,
+                    "Link til dokument": DokumentURL.replace('ad.', ''),
                     "Omfattet af ansøgning (Ja/Nej)": "Ja",
                     "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "",
                     "Begrundelse hvis nej eller delvis": ""
                 }])], ignore_index=True)
         firstrun = False
-
 
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
@@ -305,12 +304,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         return excel_column_width, excel_row_height
 
     # Open the Excel file for further formatting
-   
+
     workbook = load_workbook(excel_file_path)
     worksheet = workbook["Sagsoversigt"]
 
     # Adjust column widths dynamically
-    max_width_in_pixels = 362  # Adjust based on your target column width in pixels
+    max_width_in_pixels = 382  # Adjust based on your target column width in pixels
 
     for col_idx, column_cells in enumerate(worksheet.columns, start=1):
         max_length = 0
@@ -336,7 +335,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Set column width for Column C
     worksheet.column_dimensions[get_column_letter(COLUMN_C_INDEX)].width = MAX_COLUMN_C_WIDTH
 
-# Apply table formatting
+    # Apply table formatting
     data_range = f"A1:K{worksheet.max_row}"  # Adjust the range to include all data
     table = Table(displayName="SagsoversigtTable", ref=data_range)
 
@@ -349,7 +348,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     )
     table.tableStyleInfo = style
     worksheet.add_table(table)
-   # Define a white font for the header row
+    # Define a white font for the header row
     header_font = Font(name="Calibri", size=11, bold=False, color="FFFFFF")  # White text
 
     # Apply header styling and lock all cells by default
@@ -379,7 +378,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             for row_idx in range(2, worksheet.max_row + 1):  # Exclude the header row
                 cell = worksheet[f"{col}{row_idx}"]
                 cell.protection = Protection(locked=False)
-       
+        
     index = [4, 5, 7, 8, 9, 10, 11]
     words = [
             "Dokumentkategori  ", "Dokumentdato ", "Bilag   ",
@@ -498,7 +497,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     Mappe1 = str(DeskProID) +" - " + str(DeskProTitel)
     Mappe2 = str(SagsID) + " - " + str(SagsTitel)
-   
+
     # Authenticate to SharePoint using Office365 credentials
     credentials = UserCredential(RobotUsername, RobotPassword)
     ctx = ClientContext(API_url).with_credentials(credentials)
