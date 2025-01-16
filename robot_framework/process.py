@@ -504,7 +504,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     # Function to sanitize folder names
     def sanitize_folder_name(folder_name):
-        pattern = r'[~#%&*{}\\:<>?/+|"\t]'
+        pattern = r'[~#%&*{}\[\]\\:<>?/+|$¤£€\"\t]'
         folder_name = re.sub(pattern, "", folder_name)
         folder_name = re.sub(r"\s+", " ", folder_name).strip()
         return folder_name
