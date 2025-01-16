@@ -248,7 +248,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     "Bilag": BilagChild,
                     "Bilag til Dok ID": Bilag,
                     "Link til dokument": DokumentURL,
-                    "Omfattet af ansøgning (Ja/Nej)": "Ja",
+                    "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
                     "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "Nej",
                     "Begrundelse hvis nej eller delvis": "Tavshedsbelagte oplysninger - om private forhold"
                 }])], ignore_index=True)
@@ -262,7 +262,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     "Bilag": BilagChild,
                     "Bilag til Dok ID": Bilag,
                     "Link til dokument": DokumentURL.replace('ad.', ''),
-                    "Omfattet af ansøgning (Ja/Nej)": "Ja",
+                    "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
                     "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "",
                     "Begrundelse hvis nej eller delvis": ""
                 }])], ignore_index=True)
@@ -382,7 +382,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     index = [4, 5, 7, 8, 9, 10, 11]
     words = [
             "Dokumentkategori  ", "Dokumentdato ", "Bilag   ",
-            "Link til dokument", "Omfattet af ansøgningen (Ja/Nej)",
+            "Link til dokument", "Omfattet af ansøgningen? (Ja/Nej)",
             "Gives der aktindsigt i dokumentet (Ja/Nej/Delvis)",
             "Begrundelse hvis nej eller delvis"
         ]
