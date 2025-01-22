@@ -134,139 +134,124 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Create an empty DataFrame with these columns
     data_table = pd.DataFrame(columns=columns)
 
-    # Get the data from the server
+    # Get data from the server
     response = session.get(f"{GOAPI_URL}/{SagsURL}/_goapi/Administration/GetLeftMenuCounter")
-    stuff = response.text  # Server response as text
-    ViewsIDArray = json.loads(stuff)  # Parse the JSON
+    ViewsIDArray = json.loads(response.text) # Parse the JSON
 
-    # Iterate through the items to find the desired ViewId
+
+    # Initialize variables
+    ViewId = None
+    view_ids_to_use = []  # To handle combined views
+
+    # Check for "UdenMapper.aspx"
     for item in ViewsIDArray:
         if item["ViewName"] == "UdenMapper.aspx":
             ViewId = item["ViewId"]
-            break  # Stop searching once we find "UdenMapper.aspx"
+            break
+        elif item["ViewName"] == "Ikkejournaliseret.aspx":
+            ikke_journaliseret_id = item["ViewId"]
         elif item["ViewName"] == "Journaliseret.aspx":
-            ViewId = item["ViewId"]
-        else:
-            ViewId = None
+            journaliseret_id = item["ViewId"]
 
-    firstrun = True
-    MorePages = True
+    # If "UdenMapper.aspx" doesn't exist, combine views
+    if ViewId is None:
+        view_ids_to_use = [ikke_journaliseret_id, journaliseret_id]
 
-    while MorePages == True:
-        if log:
-            orchestrator_connection.log_info("Henter dokumentlister")
+    # Iterate through views
+    for current_view_id in ([ViewId] if ViewId else view_ids_to_use):
+        firstrun = True
+        MorePages = True
 
-        #If it is not the first run
-        if firstrun == False:
-            orchestrator_connection.log_info("Henter næste side i dokumentet")
-            url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
-            url_with_query = f"{url}?@listUrl={ListURL}{NextHref.replace('?', '&')}"
-
-            # Make the POST request with NTLM authentication
-            response = session.post(url_with_query, timeout=500)
-            response.raise_for_status()
-
-            # Handle the response
-            Dokumentliste = response.text  # Extract the content
-            
-        #If it is the first run
-        else:
-            url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
-            query_params = f"?@listUrl={ListURL}&View={ViewId}"
-            full_url = url + query_params
-
-            # Send a POST request with NTLM authentication
-            response = session.post(full_url, timeout=500)
-            response.raise_for_status()
-            # Handle the response
-            Dokumentliste = response.text  # Extract the response content
-            
-
-        #Deserialzie 
-        dokumentliste_json = json.loads(Dokumentliste) 
-        
-        #Tag fat i row
-        dokumentliste_rows = dokumentliste_json["Row"] 
-
-        if "NextHref" in dokumentliste_json:
-            MorePages = True
-            NextHref = dokumentliste_json.get("NextHref")
-        else:
-            MorePages = False
-
-
-        # Iterate over rows in dokumentliste_rows
-        for item in dokumentliste_rows:
-            # Construct DokumentURL
-            DokumentURL = GOAPI_URL + quote(item.get("FileRef", ""), safe="/")
-                
-            # Extract fields from the item
-            AktID = item.get("CaseRecordNumber").replace(".", "")
-            DokumentDato = str(item.get("Dato"))  
-            Dokumenttitel = item.get("Title", "") # "" is there to avoid an error if nothing in there
-            DokID = str(item.get("DocID"))
-            # Sagsbehandler = item.get("CaseOwner.title", "").split(" (")[0]
-            DokumentKategori = str(item.get("Korrespondance"))
-                
-            # Fallback for Dokumenttitel
-            if len(Dokumenttitel) < 2:
-                Dokumenttitel = item.get("FileLeafRef.Name", "")
-                
-            # Log AktID (if logging is enabled)
+        while MorePages:
             if log:
-                orchestrator_connection.log_info(f"AktID: {AktID}")
-                
-            if log:
-                orchestrator_connection.log_info("Henter parents")
-                
-            # Fetch Parents data from API
-            response = session.get(f"{GOAPI_URL}/_goapi/Documents/Parents/{DokID}", timeout= 500)
-            
-            # Deserialize the JSON string into a Python dictionary
-            parents_object = json.loads(response.text)
-                
-            # Extract ParentArray and count items
-            ParentArray = parents_object.get("ParentsData", [])
-                
-            # Combine all DocumentIds into a single string
-            Bilag = ", ".join(str(currentItem.get("DocumentId", "")) for currentItem in ParentArray)
+                orchestrator_connection.log_info("Henter dokumentlister")
 
-            if log:
-                orchestrator_connection.log_info("Henter children")
-            Children = session.get(f"{GOAPI_URL}/_goapi/Documents/Children/{DokID}", timeout = 500)
-            children_object = json.loads(Children.text)
-            ChildrenArray = children_object.get("ChildrenData", [])
-            BilagChild = ", ".join(str(currentItem.get("DocumentId", "")) for currentItem in ChildrenArray)
+            # If not the first run, fetch the next page
+            if not firstrun:
+                orchestrator_connection.log_info("Henter næste side i dokumentet")
+                url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
+                url_with_query = f"{url}?@listUrl={ListURL}{NextHref.replace('?', '&')}"
 
-            if "tunnel_marking" in Dokumenttitel.lower() or "memometadata" in Dokumenttitel.lower():
-                data_table = pd.concat([data_table, pd.DataFrame([{
-                    "Akt ID": AktID,
-                    "Dok ID": DokID,
-                    "Dokumenttitel": Dokumenttitel,
-                    "Dokumentkategori": DokumentKategori,
-                    "Dokumentdato": DokumentDato,
-                    "Bilag": BilagChild,
-                    "Bilag til Dok ID": Bilag,
-                    "Link til dokument": DokumentURL,
-                    "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
-                    "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "Nej",
-                    "Begrundelse hvis nej eller delvis": "Tavshedsbelagte oplysninger - om private forhold"
-                }])], ignore_index=True)
+                response = session.post(url_with_query, timeout=500)
+                response.raise_for_status()
+                Dokumentliste = response.text  # Extract the content
             else:
-                data_table = pd.concat([data_table, pd.DataFrame([{
-                    "Akt ID": AktID,
-                    "Dok ID": DokID,
-                    "Dokumenttitel": Dokumenttitel,
-                    "Dokumentkategori": DokumentKategori,
-                    "Dokumentdato": DokumentDato,
-                    "Bilag": BilagChild,
-                    "Bilag til Dok ID": Bilag,
-                    "Link til dokument": DokumentURL.replace('ad.', ''),
-                    "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
-                    "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "",
-                    "Begrundelse hvis nej eller delvis": ""
-                }])], ignore_index=True)
-        firstrun = False
+                # If first run, fetch the first page for the current view
+                url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
+                query_params = f"?@listUrl={ListURL}&View={current_view_id}"
+                full_url = url + query_params
+
+                response = session.post(full_url, timeout=500)
+                response.raise_for_status()
+                Dokumentliste = response.text  # Extract the content
+
+            # Deserialize response
+            dokumentliste_json = json.loads(Dokumentliste)
+            dokumentliste_rows = dokumentliste_json.get("Row", [])
+
+            # Check for additional pages
+            NextHref = dokumentliste_json.get("NextHref")
+            MorePages = "NextHref" in dokumentliste_json
+
+            # Process each row
+            for item in dokumentliste_rows:
+                # Extract and prepare data
+                DokumentURL = GOAPI_URL + quote(item.get("FileRef", ""), safe="/")
+                AktID = item.get("CaseRecordNumber", "").replace(".", "")
+                DokumentDato = str(item.get("Dato"))
+                Dokumenttitel = item.get("Title", "")
+                DokID = str(item.get("DocID"))
+                DokumentKategori = str(item.get("Korrespondance"))
+
+                if len(Dokumenttitel) < 2:
+                    Dokumenttitel = item.get("FileLeafRef.Name", "")
+
+                if log:
+                    orchestrator_connection.log_info(f"AktID: {AktID}")
+
+                # Fetch parents and children data
+                parents_response = session.get(f"{GOAPI_URL}/_goapi/Documents/Parents/{DokID}", timeout=500)
+                parents_object = json.loads(parents_response.text)
+                ParentArray = parents_object.get("ParentsData", [])
+                Bilag = ", ".join(str(currentItem.get("DocumentId", "")) for currentItem in ParentArray)
+
+                children_response = session.get(f"{GOAPI_URL}/_goapi/Documents/Children/{DokID}", timeout=500)
+                children_object = json.loads(children_response.text)
+                ChildrenArray = children_object.get("ChildrenData", [])
+                BilagChild = ", ".join(str(currentItem.get("DocumentId", "")) for currentItem in ChildrenArray)
+
+                # Append data to DataFrame
+                if "tunnel_marking" in Dokumenttitel.lower() or "memometadata" in Dokumenttitel.lower():
+                    data_table = pd.concat([data_table, pd.DataFrame([{
+                        "Akt ID": AktID,
+                        "Dok ID": DokID,
+                        "Dokumenttitel": Dokumenttitel,
+                        "Dokumentkategori": DokumentKategori,
+                        "Dokumentdato": DokumentDato,
+                        "Bilag": BilagChild,
+                        "Bilag til Dok ID": Bilag,
+                        "Link til dokument": DokumentURL,
+                        "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
+                        "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "Nej",
+                        "Begrundelse hvis nej eller delvis": "Tavshedsbelagte oplysninger - om private forhold"
+                    }])], ignore_index=True)
+                else:
+                    data_table = pd.concat([data_table, pd.DataFrame([{
+                        "Akt ID": AktID,
+                        "Dok ID": DokID,
+                        "Dokumenttitel": Dokumenttitel,
+                        "Dokumentkategori": DokumentKategori,
+                        "Dokumentdato": DokumentDato,
+                        "Bilag": BilagChild,
+                        "Bilag til Dok ID": Bilag,
+                        "Link til dokument": DokumentURL,
+                        "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
+                        "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "",
+                        "Begrundelse hvis nej eller delvis": ""
+                    }])], ignore_index=True)
+
+            firstrun = False
+
 
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
