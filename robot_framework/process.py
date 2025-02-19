@@ -60,7 +60,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     PodioID = str(queue_json["PodioID"])
     DeskProID = str(queue_json["DeskproID"])
     DeskProTitel = str(queue_json["Titel"])
-
+    orchestrator_connection.log_info(f'Processing {SagsID} in {DeskProTitel}')
     #Determining if it is a Nova-case or not
     pattern = r"^[A-Z]{3}-\d{4}-\d{6}"
 
