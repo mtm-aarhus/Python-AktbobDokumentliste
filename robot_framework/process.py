@@ -3,7 +3,6 @@
 
 ###### dræb excel inden det sættes i gang - se på om excel holdes åbent ##########################
 
-
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from OpenOrchestrator.database.queues import QueueElement
 import os
@@ -13,21 +12,22 @@ import xml.etree.ElementTree as ET
 import requests
 import json
 from urllib.parse import quote
-from datetime import datetime
+from datetime import datetime, timedelta
 from office365.runtime.auth.user_credential import UserCredential
 from office365.sharepoint.client_context import ClientContext
+from office365.sharepoint.sharing.links.kind import SharingLinkKind
+from office365.sharepoint.webs.web import Web
 from requests_ntlm import HttpNtlmAuth
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
-import smtplib
-from email.message import EmailMessage
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.styles import Alignment, Font, Protection
+import smtplib
+from email.message import EmailMessage
 from PIL import ImageFont, ImageDraw, Image
-from office365.sharepoint.sharing.links.kind import SharingLinkKind
-from office365.sharepoint.webs.web import Web
-
+import pytz
+import uuid
 
 # pylint: disable-next=unused-argument
 def process(orchestrator_connection: OrchestratorConnection, queue_element: QueueElement | None = None) -> None:
