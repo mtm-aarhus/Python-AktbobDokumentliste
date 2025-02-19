@@ -31,7 +31,6 @@ from office365.sharepoint.webs.web import Web
 
 # pylint: disable-next=unused-argument
 def process(orchestrator_connection: OrchestratorConnection, queue_element: QueueElement | None = None) -> None:
-   
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
 
@@ -41,23 +40,25 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     #Getting credentials
     API_url = orchestrator_connection.get_constant("AktbobSharePointURL").value
     API_credentials = orchestrator_connection.get_credential("AktbobAPIKey")
-    API_username = API_credentials.username ## Instead use endpoint
+    API_username = API_credentials.username
     API_password = API_credentials.password
 
     #Define developer mail
     UdviklerMail = orchestrator_connection.get_constant("balas").value
 
-    GOAPILIVECRED = orchestrator_connection.get_credential("GOAktApiUser")
-    GOAPILIVECRED_username = GOAPILIVECRED.username
-    GOAPILIVECRED_password = GOAPILIVECRED.password
-    GOAPI_URL = orchestrator_connection.get_constant('GOApiURL').value
 
     #Get Robot Credentials
     RobotCredentials = orchestrator_connection.get_credential("Robot365User")
     RobotUsername = RobotCredentials.username
     RobotPassword = RobotCredentials.password
 
-    queue_json = json.loads(queue_element.data)
+    # queue_json = json.loads(queue_element.data)
+    queue_json = {"SagsNummer": "S2021-456011", 
+                "Email": "balas@aarhus.dk", 
+                "PodioID": 2923285810, 
+                "DeskproID": 2110, 
+                "Titel": "Test - akt"
+                }
 
     # Retrieve elements from queue_json
     SagsID = str(queue_json["SagsNummer"])
@@ -65,64 +66,173 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     PodioID = str(queue_json["PodioID"])
     DeskProID = str(queue_json["DeskproID"])
     DeskProTitel = str(queue_json["Titel"])
-    url = GOAPI_URL + "/_goapi/Cases/Metadata/" + SagsID
+
+    #Determining if it is a Nova-case or not
+    pattern = r"^[A-Z]{3}-\d{4}-\d{6}$"
+
+    if re.match(pattern, SagsID):
+        GeoSag = True
+        NovaSag = False  
+        GOAPILIVECRED = orchestrator_connection.get_credential("GOAktApiUser")
+        GOAPILIVECRED_username = GOAPILIVECRED.username
+        GOAPILIVECRED_password = GOAPILIVECRED.password
+        GOAPI_URL = orchestrator_connection.get_constant('GOApiURL').value
+    else:
+        NovaSag = True
+        GeoSag = False  
+
+        def GetKMDToken(orchestrator_connection: OrchestratorConnection):
+        
+            TokenTimeStamp = orchestrator_connection.get_constant("KMDTokenTimestamp").value
+            KMD_access = orchestrator_connection.get_credential("KMDAccessToken")
+            KMD_access_token = KMD_access.password
+            KMD_URL = KMD_access.username
+        
+            # Define Danish timezone
+            danish_timezone = pytz.timezone("Europe/Copenhagen")
+        
+            # Parse the old timestamp to a datetime object
+            old_time = datetime.strptime(TokenTimeStamp.strip(), "%d-%m-%Y %H:%M:%S")
+            old_time = danish_timezone.localize(old_time)  # Localize to Danish timezone
+            print('Old timestamp: ' + old_time.strftime("%d-%m-%Y %H:%M:%S"))
+        
+            # Get the current timestamp in Danish timezone
+            current_time = datetime.now(danish_timezone)
+            print('current timestamp: '+current_time.strftime("%d-%m-%Y %H:%M:%S"))
+            str_current_time = current_time.strftime("%d-%m-%Y %H:%M:%S")
+        
+            # Calculate the difference between the two timestamps
+            time_difference = current_time - old_time
+            print(time_difference)
+        
+            # Check if the difference is over 1 hour and 30 minutes
+            GetNewTimeStamp = time_difference > timedelta(hours=1, minutes=30)
+        
+            # Output for the boolean
+            print("GetNewTimeStamp:", GetNewTimeStamp)
+        
+            # Example of using it in an if-statement
+            if GetNewTimeStamp:
+                print("The difference is over 1 hour and 30 minutes. Fetch a new timestamp!")
+                # Replace these values with your actual keys
+                client_id = 'aarhus_kommune'
+                client_secret = 'lottNjMyx07BBfEzkVx5P2HwPWpvz2sG'
+                scope = 'client'
+                grant_type = 'client_credentials'
+        
+        
+                # Data to be sent in the POST request
+                keys = {
+                    'client_id': client_id,
+                    'client_secret': client_secret,
+                    'scope': scope,
+                    'grant_type': grant_type,  # Specify the grant type you're using
+                }
+        
+                # Sending POST request to get the access token
+                response = requests.post(KMD_URL, data=keys)
+        
+                # Check if the request was successful (status code 200)
+                if response.status_code == 200:
+                    KMD_access_token = response.json().get('access_token')
+                    print("Access token granted")
+                    orchestrator_connection.update_credential("KMDAccessToken",KMD_URL,KMD_access_token)
+                    orchestrator_connection.update_constant("KMDTokenTimestamp",str_current_time)
+            
+                    return KMD_access_token
+                else:
+                    print("Failed to get the access token")
+        
+            else:
+                print("No need to fetch a new timestamp - using old timestamp")
+                return KMD_access_token
+        KMD_access_token = GetKMDToken(orchestrator_connection)   
+        NOVA_URL = orchestrator_connection.get_constant("KMDNovaURL").value
+
+    #Assigning different URL's depending on case type
+    if NovaSag:
+        Document_url = NOVA_URL + "/Document/GetList?api-version=2.0-Case"
+        Case_url = NOVA_URL + "/Case/GetList?api-version=2.0-Case"
+        id = str(uuid.uuid4())
+    else:
+        url = GOAPI_URL + "/_goapi/Cases/Metadata/" + SagsID
 
     if log:
         orchestrator_connection.log_info("Process starter")
 
     # Create session with NTLM authentication
-
     session = requests.Session()
-    session.auth = HttpNtlmAuth(GOAPILIVECRED_username, GOAPILIVECRED_password)
-    session.headers.update({"Content-Type": "application/json"})
+    if GeoSag:
+        session.auth = HttpNtlmAuth(GOAPILIVECRED_username, GOAPILIVECRED_password)
+        session.headers.update({"Content-Type": "application/json"})
+        response = session.get(url, timeout=500)
+        response.raise_for_status()
 
-    # Send GET request
+        # Process the response content directly (assuming response.status_code == 200)
+        SagMetaData = response.text
+        json_obj = json.loads(SagMetaData)
+
+        # Extract the "Metadata" field from the JSON response
+        metadata_xml = json_obj.get("Metadata")
+        if metadata_xml:
+            # Parse the XML string
+            xdoc = ET.fromstring(metadata_xml)
+
+            # Extract attributes
+            SagsURL = xdoc.attrib.get("ows_CaseUrl")
+            SagsTitel = xdoc.attrib.get("ows_Title")
+
+            # Process SagsURL
+            if SagsURL and "cases/" in SagsURL:
+                # Split SagsURL by "cases/" and take the second part
+                Akt = SagsURL.split("cases/")[1].split("/")[0]
+            else:
+                print("Error: 'cases/' not found in SagsURL or SagsURL is missing.")
+        else:
+            print("Error: 'Metadata' field is missing in the JSON response.")
+    if NovaSag:
+        payload = json.dumps({
+        "common": {
+            "transactionId": "6630880c-e5e9-4b9f-b348-884af571a69b"
+        },
+        "paging": {
+            "startRow": 1,
+            "numberOfRows": 5
+        },
+        "CASEATTRIBUTES": {
+            "USERFRIENDLYCASENUMBER": SagsID
+        },
+        "caseGetOutput": {
+            "caseAttributes": {
+            "title": True,
+            "userFriendlyCaseNumber": True,
+            "numberOfDocuments": True
+            }
+        }
+        })
+        headers = {
+        "Authorization": f"Bearer {KMD_access_token}",
+        'Content-Type': 'application/json'
+        }
+
+        response = requests.request("PUT", Case_url, headers=headers, data=payload)
+        response.raise_for_status()
+
+        # Process the response content directly (assuming response.status_code == 200)
+        SagMetaData = response.text
+        json_obj = json.loads(SagMetaData)
+
+        SagsTitel = json_obj['cases'][0]['caseAttributes']['title']
+        SagsURL = "" #SagsURL is nothing for now due to the setup in nova - potentially add later
+
+    # Send GET request    
     if log:
         orchestrator_connection.log_info("Getting metadata")
-    response = session.get(url, timeout=500)
-    response.raise_for_status()
-
-    # Process the response content directly (assuming response.status_code == 200)
-    SagMetaData = response.text
-    json_obj = json.loads(SagMetaData)
-
-    # Extract the "Metadata" field from the JSON response
-    metadata_xml = json_obj.get("Metadata")
-    if metadata_xml:
-        # Parse the XML string
-        xdoc = ET.fromstring(metadata_xml)
-
-        # Extract attributes
-        SagsURL = xdoc.attrib.get("ows_CaseUrl")
-        SagsTitel = xdoc.attrib.get("ows_Title")
-
-        # Process SagsURL
-        if SagsURL and "cases/" in SagsURL:
-            # Split SagsURL by "cases/" and take the second part
-            Akt = SagsURL.split("cases/")[1].split("/")[0]
-        else:
-            print("Error: 'cases/' not found in SagsURL or SagsURL is missing.")
-    else:
-        print("Error: 'Metadata' field is missing in the JSON response.")
 
     # Removal of illegal characters and double spaces
-    pattern = r'[~#%&*{}\\:<>?/+|"\t]'
+    pattern = r'[~#%&*{}\:\\<>?/+|\"\'\t\[\]`^@=!$();\€£¥₹]'
     SagsTitel = re.sub(pattern, '', str(SagsTitel))
     SagsTitel = " ".join(SagsTitel.split())
-
-    if log:
-        orchestrator_connection.log_info("Sagsurl" + SagsURL)
-    Akt = SagsURL.split("/")[1]
-    if log:
-        orchestrator_connection.log_info("Akt" + Akt)
-
-    # Replacing '-' with '%2D' in SagsID
-    encoded_sags_id = SagsID.replace("-", "%2D")
-
-    # Constructing the URL
-    ListURL = f"%27%2Fcases%2F{Akt}%2F{encoded_sags_id}%2FDokumenter%27"
-    if log:
-        orchestrator_connection.log_info("ListURL: " + ListURL)
 
     # Define the structure of the DataTable
     columns = [
@@ -135,124 +245,212 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Create an empty DataFrame with these columns
     data_table = pd.DataFrame(columns=columns)
 
-    # Get data from the server
-    response = session.get(f"{GOAPI_URL}/{SagsURL}/_goapi/Administration/GetLeftMenuCounter")
-    ViewsIDArray = json.loads(response.text) # Parse the JSON
+    if log:
+        orchestrator_connection.log_info("Sagsurl" + SagsURL)
+    if GeoSag:
+        orchestrator_connection.log_info("Processing GEO case")
+        Akt = SagsURL.split("/")[1]  
+        
+        if log:
+            orchestrator_connection.log_info("Akt" + Akt)# Constructing the URL
+        # Replacing '-' with '%2D' in SagsID
+        encoded_sags_id = SagsID.replace("-", "%2D")
+        ListURL = f"%27%2Fcases%2F{Akt}%2F{encoded_sags_id}%2FDokumenter%27"
+        
+        if log:
+            orchestrator_connection.log_info("ListURL: " + ListURL)
+        
+        # Initialize variables
+        ViewId = None
+        view_ids_to_use = []  # To handle combined views
+        response = session.get(f"{GOAPI_URL}/{SagsURL}/_goapi/Administration/GetLeftMenuCounter")
+        ViewsIDArray = json.loads(response.text) # Parse the JSON
 
+        # Check for "UdenMapper.aspx"
+        for item in ViewsIDArray:
+            if item["ViewName"] == "UdenMapper.aspx":
+                ViewId = item["ViewId"]
+                break
+            elif item["ViewName"] == "Ikkejournaliseret.aspx":
+                ikke_journaliseret_id = item["ViewId"]
+            elif item["ViewName"] == "Journaliseret.aspx":
+                journaliseret_id = item["ViewId"]
 
-    # Initialize variables
-    ViewId = None
-    view_ids_to_use = []  # To handle combined views
+        # If "UdenMapper.aspx" doesn't exist, combine views
+        if ViewId is None:
+            view_ids_to_use = [ikke_journaliseret_id, journaliseret_id]
 
-    # Check for "UdenMapper.aspx"
-    for item in ViewsIDArray:
-        if item["ViewName"] == "UdenMapper.aspx":
-            ViewId = item["ViewId"]
-            break
-        elif item["ViewName"] == "Ikkejournaliseret.aspx":
-            ikke_journaliseret_id = item["ViewId"]
-        elif item["ViewName"] == "Journaliseret.aspx":
-            journaliseret_id = item["ViewId"]
+        # Iterate through views
+        for current_view_id in ([ViewId] if ViewId else view_ids_to_use):
+            firstrun = True
+            MorePages = True
 
-    # If "UdenMapper.aspx" doesn't exist, combine views
-    if ViewId is None:
-        view_ids_to_use = [ikke_journaliseret_id, journaliseret_id]
-
-    # Iterate through views
-    for current_view_id in ([ViewId] if ViewId else view_ids_to_use):
-        firstrun = True
-        MorePages = True
-
-        while MorePages:
-            if log:
-                orchestrator_connection.log_info("Henter dokumentlister")
-
-            # If not the first run, fetch the next page
-            if not firstrun:
-                orchestrator_connection.log_info("Henter næste side i dokumentet")
-                url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
-                url_with_query = f"{url}?@listUrl={ListURL}{NextHref.replace('?', '&')}"
-
-                response = session.post(url_with_query, timeout=500)
-                response.raise_for_status()
-                Dokumentliste = response.text  # Extract the content
-            else:
-                # If first run, fetch the first page for the current view
-                url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
-                query_params = f"?@listUrl={ListURL}&View={current_view_id}"
-                full_url = url + query_params
-
-                response = session.post(full_url, timeout=500)
-                response.raise_for_status()
-                Dokumentliste = response.text  # Extract the content
-
-            # Deserialize response
-            dokumentliste_json = json.loads(Dokumentliste)
-            dokumentliste_rows = dokumentliste_json.get("Row", [])
-
-            # Check for additional pages
-            NextHref = dokumentliste_json.get("NextHref")
-            MorePages = "NextHref" in dokumentliste_json
-
-            # Process each row
-            for item in dokumentliste_rows:
-                # Extract and prepare data
-                DokumentURL = GOAPI_URL + quote(item.get("FileRef", ""), safe="/")
-                AktID = item.get("CaseRecordNumber", "").replace(".", "")
-                DokumentDato = str(item.get("Dato"))
-                Dokumenttitel = item.get("Title", "")
-                DokID = str(item.get("DocID"))
-                DokumentKategori = str(item.get("Korrespondance"))
-
-                if len(Dokumenttitel) < 2:
-                    Dokumenttitel = item.get("FileLeafRef.Name", "")
-
+            while MorePages:
                 if log:
-                    orchestrator_connection.log_info(f"AktID: {AktID}")
+                    orchestrator_connection.log_info("Henter dokumentlister")
 
-                # Fetch parents and children data
-                parents_response = session.get(f"{GOAPI_URL}/_goapi/Documents/Parents/{DokID}", timeout=500)
-                parents_object = json.loads(parents_response.text)
-                ParentArray = parents_object.get("ParentsData", [])
-                Bilag = ", ".join(str(currentItem.get("DocumentId", "")) for currentItem in ParentArray)
+                # If not the first run, fetch the next page
+                if not firstrun:
+                    orchestrator_connection.log_info("Henter næste side i dokumentet")
+                    url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
+                    url_with_query = f"{url}?@listUrl={ListURL}{NextHref.replace('?', '&')}"
 
-                children_response = session.get(f"{GOAPI_URL}/_goapi/Documents/Children/{DokID}", timeout=500)
-                children_object = json.loads(children_response.text)
-                ChildrenArray = children_object.get("ChildrenData", [])
-                BilagChild = ", ".join(str(currentItem.get("DocumentId", "")) for currentItem in ChildrenArray)
-
-                # Append data to DataFrame
-                if "tunnel_marking" in Dokumenttitel.lower() or "memometadata" in Dokumenttitel.lower():
-                    data_table = pd.concat([data_table, pd.DataFrame([{
-                        "Akt ID": AktID,
-                        "Dok ID": DokID,
-                        "Dokumenttitel": Dokumenttitel,
-                        "Dokumentkategori": DokumentKategori,
-                        "Dokumentdato": DokumentDato,
-                        "Bilag": BilagChild,
-                        "Bilag til Dok ID": Bilag,
-                        "Link til dokument": DokumentURL,
-                        "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
-                        "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "Nej",
-                        "Begrundelse hvis nej eller delvis": "Tavshedsbelagte oplysninger - om private forhold"
-                    }])], ignore_index=True)
+                    response = session.post(url_with_query, timeout=500)
+                    response.raise_for_status()
+                    Dokumentliste = response.text  # Extract the content
                 else:
-                    data_table = pd.concat([data_table, pd.DataFrame([{
-                        "Akt ID": AktID,
-                        "Dok ID": DokID,
-                        "Dokumenttitel": Dokumenttitel,
-                        "Dokumentkategori": DokumentKategori,
-                        "Dokumentdato": DokumentDato,
-                        "Bilag": BilagChild,
-                        "Bilag til Dok ID": Bilag,
-                        "Link til dokument": DokumentURL,
-                        "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
-                        "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "",
-                        "Begrundelse hvis nej eller delvis": ""
-                    }])], ignore_index=True)
+                    # If first run, fetch the first page for the current view
+                    url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
+                    query_params = f"?@listUrl={ListURL}&View={current_view_id}"
+                    full_url = url + query_params
 
-            firstrun = False
+                    response = session.post(full_url, timeout=500)
+                    response.raise_for_status()
+                    Dokumentliste = response.text  # Extract the content
 
+                # Deserialize response
+                dokumentliste_json = json.loads(Dokumentliste)
+                dokumentliste_rows = dokumentliste_json.get("Row", [])
+
+                # Check for additional pages
+                NextHref = dokumentliste_json.get("NextHref")
+                MorePages = "NextHref" in dokumentliste_json
+
+                # Process each row
+                for item in dokumentliste_rows:
+                    # Extract and prepare data
+                    DokumentURL = GOAPI_URL + quote(item.get("FileRef", ""), safe="/")
+                    AktID = item.get("CaseRecordNumber", "").replace(".", "")
+                    DokumentDato = str(item.get("Dato"))
+                    Dokumenttitel = item.get("Title", "")
+                    DokID = str(item.get("DocID"))
+                    DokumentKategori = str(item.get("Korrespondance"))
+
+                    if len(Dokumenttitel) < 2:
+                        Dokumenttitel = item.get("FileLeafRef.Name", "")
+
+                    if log:
+                        orchestrator_connection.log_info(f"AktID: {AktID}")
+
+                    # Fetch parents and children data
+                    parents_response = session.get(f"{GOAPI_URL}/_goapi/Documents/Parents/{DokID}", timeout=500)
+                    parents_object = json.loads(parents_response.text)
+                    ParentArray = parents_object.get("ParentsData", [])
+                    Bilag = ", ".join(str(currentItem.get("DocumentId", "")) for currentItem in ParentArray)
+
+                    children_response = session.get(f"{GOAPI_URL}/_goapi/Documents/Children/{DokID}", timeout=500)
+                    children_object = json.loads(children_response.text)
+                    ChildrenArray = children_object.get("ChildrenData", [])
+                    BilagChild = ", ".join(str(currentItem.get("DocumentId", "")) for currentItem in ChildrenArray)
+
+                    # Append data to DataFrame
+                    if "tunnel_marking" in Dokumenttitel.lower() or "memometadata" in Dokumenttitel.lower():
+                        data_table = pd.concat([data_table, pd.DataFrame([{
+                            "Akt ID": AktID,
+                            "Dok ID": DokID,
+                            "Dokumenttitel": Dokumenttitel,
+                            "Dokumentkategori": DokumentKategori,
+                            "Dokumentdato": DokumentDato,
+                            "Bilag": BilagChild,
+                            "Bilag til Dok ID": Bilag,
+                            "Link til dokument": DokumentURL,
+                            "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
+                            "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "Nej",
+                            "Begrundelse hvis nej eller delvis": "Tavshedsbelagte oplysninger - om private forhold"
+                        }])], ignore_index=True)
+                    else:
+                        data_table = pd.concat([data_table, pd.DataFrame([{
+                            "Akt ID": AktID,
+                            "Dok ID": DokID,
+                            "Dokumenttitel": Dokumenttitel,
+                            "Dokumentkategori": DokumentKategori,
+                            "Dokumentdato": DokumentDato,
+                            "Bilag": BilagChild,
+                            "Bilag til Dok ID": Bilag,
+                            "Link til dokument": DokumentURL,
+                            "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
+                            "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "",
+                            "Begrundelse hvis nej eller delvis": ""
+                        }])], ignore_index=True)
+
+                firstrun = False
+    else:
+        orchestrator_connection.log_info("Processing NOVA case")
+        payload = json.dumps({
+        "common": {
+            "transactionId": id
+        },
+        "paging": {
+            "startRow": 0,
+            "numberOfRows": 10000,
+            "calculateTotalNumberOfRows": True
+        },
+        "caseNumber": SagsID,
+        "getOutput": {
+            "documentType": True,
+            "title": True,
+            "caseWorker": True,
+            "description": True, 
+            "fileExtension": True,
+            "approved": True, 
+            "acceptReceived": True,
+            "documentDate": True
+        }
+        })
+        headers = {
+        "Authorization": f"Bearer {KMD_access_token}",
+        'Content-Type': 'application/json'
+        }
+
+        response = requests.request("PUT", Document_url, headers=headers, data=payload)
+        response.raise_for_status
+        aktid_number = 1
+        documents = json.loads(response.text)['documents']
+        # Process each row
+        for i in range(len(documents)):
+            # Extract and prepare data
+            DokumentURL = ""
+            AktID = aktid_number
+            DokumentDato = str(documents[i]['documentDate'])
+            date_object = datetime.strptime(DokumentDato, "%Y-%m-%dT%H:%M:%S")
+            formatted_date = date_object.strftime("%d-%m-%Y")
+            Dokumenttitel = documents[i]['title']
+            DokID = documents[i]['documentNumber']
+            DokumentKategori = documents[i]['documentType']
+
+            # Append data to DataFrame
+            if "tunnel_marking" in Dokumenttitel.lower() or "memometadata" in Dokumenttitel.lower() or "fletteliste" in Dokumenttitel.lower():
+                data_table = pd.concat([data_table, pd.DataFrame([{
+                    "Akt ID": AktID,
+                    "Dok ID": DokID,
+                    "Dokumenttitel": Dokumenttitel,
+                    "Dokumentkategori": DokumentKategori,
+                    "Dokumentdato": formatted_date,
+                    "Bilag": "",
+                    "Bilag til Dok ID": "",
+                    "Link til dokument": DokumentURL,
+                    "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
+                    "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "Nej",
+                    "Begrundelse hvis nej eller delvis": "Tavshedsbelagte oplysninger - om private forhold"
+                }])], ignore_index=True)
+            else:
+                data_table = pd.concat([data_table, pd.DataFrame([{
+                    "Akt ID": AktID,
+                    "Dok ID": DokID,
+                    "Dokumenttitel": Dokumenttitel,
+                    "Dokumentkategori": DokumentKategori,
+                    "Dokumentdato": formatted_date,
+                    "Bilag": "",
+                    "Bilag til Dok ID": "",
+                    "Link til dokument": DokumentURL,
+                    "Omfattet af ansøgningen? (Ja/Nej)": "Ja",
+                    "Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)": "",
+                    "Begrundelse hvis nej eller delvis": ""
+                }])], ignore_index=True)
+            aktid_number += 1
+
+    #Adding sorting to the AktID column:
+    data_table.sort_values(by = 'Akt ID', ascending= True, inplace = True, ignore_index= True)
 
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
@@ -490,7 +688,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     # Function to sanitize folder names
     def sanitize_folder_name(folder_name):
-        pattern = r'[~#%&*{}\[\]\\:<>?/+|$¤£€\"\t.]'
+        pattern = r'[.,~#%&*{}\[\]\\:<>?/+|$¤£€\"\t]'
         folder_name = re.sub(pattern, "", folder_name)
         folder_name = re.sub(r"\s+", " ", folder_name).strip()
         return folder_name
