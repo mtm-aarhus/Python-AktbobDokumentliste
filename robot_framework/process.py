@@ -68,7 +68,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     DeskProTitel = str(queue_json["Titel"])
 
     #Determining if it is a Nova-case or not
-    pattern = r"^[A-Z]{3}-\d{4}-\d{6}$"
+    pattern = r"^[A-Z]{3}-\d{4}-\d{6}"
 
     if re.match(pattern, SagsID):
         GeoSag = True
