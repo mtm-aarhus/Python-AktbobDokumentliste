@@ -71,6 +71,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         orchestrator_connection.log_info("Process starter")
 
     # Create session with NTLM authentication
+
     session = requests.Session()
     session.auth = HttpNtlmAuth(GOAPILIVECRED_username, GOAPILIVECRED_password)
     session.headers.update({"Content-Type": "application/json"})
@@ -489,7 +490,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     # Function to sanitize folder names
     def sanitize_folder_name(folder_name):
-        pattern = r'[~#%&*{}\[\]\\:<>?/+|$¤£€\"\t]'
+        pattern = r'[~#%&*{}\[\]\\:<>?/+|$¤£€\"\t.]'
         folder_name = re.sub(pattern, "", folder_name)
         folder_name = re.sub(r"\s+", " ", folder_name).strip()
         return folder_name

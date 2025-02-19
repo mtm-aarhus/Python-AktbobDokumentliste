@@ -27,6 +27,8 @@ share/python-wheels/
 MANIFEST
 sandbox_dokumentliste.py
 Dokumentliste_sandbox.py
+sandbox_dokumentliste_nova.py
+test_hent_data_nova.py
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
