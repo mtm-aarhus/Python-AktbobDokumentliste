@@ -814,7 +814,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     put_body = {"value": SharepointLink}
     put_response = requests.put(put_url, headers=headers, json=put_body)
 
-    if put_response.status_code != 200:
+    if put_response.status_code != 200 or put_response.status_code != 204:
         print(f"PUT request failed: {put_response.status_code}, {put_response.text}")
 
     # Debugging: Print URLs and Headers
