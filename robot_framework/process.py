@@ -407,7 +407,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             AktID = aktid_number
             DokumentDato = str(documents[i]['documentDate'])
             date_object = datetime.strptime(DokumentDato, "%Y-%m-%dT%H:%M:%S")
-            formatted_date = date_object.strftime("%d-%m-%Y")
+            formatted_date = str(date_object.strftime("%d-%m-%Y"))
             Dokumenttitel = documents[i]['title']
             DokID = documents[i]['documentNumber']
             DokumentKategori = documents[i]['documentType']
