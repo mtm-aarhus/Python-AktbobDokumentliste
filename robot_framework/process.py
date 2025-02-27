@@ -443,9 +443,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 }])], ignore_index=True)
             aktid_number += 1
 
-    #Adding sorting to the AktID column:
-    data_table.sort_values(by = 'Akt ID', ascending= True, inplace = True, ignore_index= True)
+    ## Convert 'Akt ID' to string, strip spaces, then convert to numeric
+    data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
 
+    # Sort values
+    data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
@@ -814,7 +816,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     put_body = {"value": SharepointLink}
     put_response = requests.put(put_url, headers=headers, json=put_body)
 
-    if put_response.status_code != 200 or put_response.status_code != 204:
+    if put_response.status_code != 200 and put_response.status_code != 204:
         print(f"PUT request failed: {put_response.status_code}, {put_response.text}")
 
     # Debugging: Print URLs and Headers
