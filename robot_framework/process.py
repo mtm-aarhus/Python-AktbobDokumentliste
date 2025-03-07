@@ -444,11 +444,10 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             aktid_number += 1
 
     ## Convert 'Akt ID' to string, strip spaces, then convert to numeric
-    data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
+    # data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
 
     # Sort values
-    data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
-    orchestrator_connection.log_info(f"DataFrame columns: {list(data_table.columns)}")
+    # data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
 
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
