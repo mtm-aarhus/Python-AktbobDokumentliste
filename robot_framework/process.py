@@ -461,10 +461,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     if data_table.empty:
         orchestrator_connection.log_info("Data table is empty, creating an Excel file with headers only.")
-        with pd.ExcelWriter(excel_file_path, engine="openpyxl") as writer:
-            pd.DataFrame(columns=columns).to_excel(writer, index=False, sheet_name="Sagsoversigt")  # Explicitly write headers
+        # Create an empty DataFrame with headers
+        empty_df = pd.DataFrame(columns=data_table.columns)
+        empty_df.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
     else:
         data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
+
 
     orchestrator_connection.log_info(f"Excel file saved: {excel_file_path}")
 
@@ -689,10 +691,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         validation_k.add(f"K2:K{worksheet.max_row}")
     else:
         orchestrator_connection.log_info("No data rows available, applying validation only to an empty row.")
-        validation_i.add("I2")  # Apply validation to row 2 (empty row placeholder)
-        validation_j.add("J2")
-        validation_k.add("K2")
-
 
     worksheet.protection.sheet = True
     worksheet.protection.password = "Aktbob"
