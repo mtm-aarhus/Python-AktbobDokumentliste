@@ -450,12 +450,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 }])], ignore_index=True)
             aktid_number += 1
 
-    ## Convert 'Akt ID' to string, strip spaces, then convert to numeric
-    data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
+    if not data_table.empty:
+        data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
+        data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
+    else:
+        orchestrator_connection.log_info("Data table is empty, skipping sorting and numeric conversion.")
 
-    # Sort values
-    data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
-    
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
