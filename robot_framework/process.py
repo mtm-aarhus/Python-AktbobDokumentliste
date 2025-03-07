@@ -456,9 +456,19 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     else:
         orchestrator_connection.log_info("Data table is empty, skipping sorting and numeric conversion.")
 
-    # Save the pandas DataFrame to Excel
+    # Ensure headers are always included
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
-    data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
+
+    if data_table.empty:
+        orchestrator_connection.log_info("Data table is empty, creating an Excel file with headers only.")
+        # Create an empty DataFrame with headers
+        empty_df = pd.DataFrame(columns=data_table.columns)
+        empty_df.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
+    else:
+        data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
+
+    orchestrator_connection.log_info(f"Excel file saved: {excel_file_path}")
+
 
     # Define the font path and size
     FONT_PATH = "calibri.ttf"  # Replace with the path to your Calibri or desired font
