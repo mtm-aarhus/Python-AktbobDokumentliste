@@ -307,7 +307,10 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 # Deserialize response
                 dokumentliste_json = json.loads(Dokumentliste)
                 dokumentliste_rows = dokumentliste_json.get("Row", [])
-                orchestrator_connection.log_info(f"Extracted Dokumentliste JSON: {json.dumps(dokumentliste_json, indent=2)}")
+                if "Row" in dokumentliste_json:
+                    orchestrator_connection.log_info(f"Dokumentliste 'Row' count: {len(dokumentliste_json['Row'])}")
+                else:
+                    orchestrator_connection.log_info("Dokumentliste JSON does NOT contain 'Row'. Possible API change or empty response.")
 
 
                 # Check for additional pages
