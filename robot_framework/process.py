@@ -461,9 +461,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     if data_table.empty:
         orchestrator_connection.log_info("Data table is empty, creating an Excel file with headers only.")
-        # Create an empty DataFrame with headers
-        empty_df = pd.DataFrame(columns=data_table.columns)
-        empty_df.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
+        with pd.ExcelWriter(excel_file_path, engine="openpyxl") as writer:
+            pd.DataFrame(columns=columns).to_excel(writer, index=False, sheet_name="Sagsoversigt")  # Explicitly write headers
     else:
         data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
 
