@@ -180,6 +180,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             if SagsURL and "cases/" in SagsURL:
                 # Split SagsURL by "cases/" and take the second part
                 Akt = SagsURL.split("cases/")[1].split("/")[0]
+                orchestrator_connection.log_info(f"SagMetaData (GeoSag): {json.dumps(json_obj, indent=2)}")
+                orchestrator_connection.log_info(f"Extracted Metadata XML: {metadata_xml}")
+                orchestrator_connection.log_info(f"Extracted Dokumentliste JSON: {json.dumps(dokumentliste_json, indent=2)}")
+
+
             else:
                 print("Error: 'cases/' not found in SagsURL or SagsURL is missing.")
         else:
