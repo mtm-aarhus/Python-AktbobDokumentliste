@@ -307,6 +307,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 # Deserialize response
                 dokumentliste_json = json.loads(Dokumentliste)
                 dokumentliste_rows = dokumentliste_json.get("Row", [])
+                orchestrator_connection.log_info(f"Extracted Dokumentliste JSON: {json.dumps(dokumentliste_json, indent=2)}")
+
 
                 # Check for additional pages
                 NextHref = dokumentliste_json.get("NextHref")
@@ -628,10 +630,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             cell.value = "Dokumentlink"
             cell.hyperlink = url
             cell.style = "Hyperlink"
-    orchestrator_connection.log_info(f"Worksheet max_row: {worksheet.max_row}")
-    orchestrator_connection.log_info(f"DataFrame shape: {data_table.shape}")  # Logs number of rows and columns
-    orchestrator_connection.log_info(f"DataFrame columns: {list(data_table.columns)}")  # Logs column names
-    orchestrator_connection.log_info(f"First few rows:\n{data_table.head().to_string()}")  # Logs first few rows
 
     # Add strict data validation for columns I, J, and K
     validation_i = DataValidation(type="list", formula1='"Ja,Nej"', allow_blank=False, showErrorMessage=True)
