@@ -639,13 +639,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     validation_i.error = "Vælg venligt enten Ja eller Nej."
     validation_i.errorTitle = "Ugyldig værdi"
     worksheet.add_data_validation(validation_i)
-    validation_i.add(f"I2:I{worksheet.max_row}")
+    
 
     validation_j = DataValidation(type="list", formula1='"Ja,Delvis,Nej"', allow_blank=False, showErrorMessage=True)
     validation_j.error = "Vælg venligt enten Ja, Delvis eller Nej."
     validation_j.errorTitle = "Ugyldig værdi"
     worksheet.add_data_validation(validation_j)
-    validation_j.add(f"J2:J{worksheet.max_row}")
 
     hidden_options = [
         "Internt dokument - ufærdigt arbejdsdokument",
@@ -674,7 +673,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     validation_k.error = "Please select one of the provided options."
     validation_k.errorTitle = "Invalid Input"
     worksheet.add_data_validation(validation_k)
-    validation_k.add(f"K2:K{worksheet.max_row}")
+    if worksheet.max_row > 1:
+        validation_i.add(f"I2:I{worksheet.max_row}")
+        validation_j.add(f"J2:J{worksheet.max_row}")
+        validation_k.add(f"K2:K{worksheet.max_row}")
+    else:
+        orchestrator_connection.log_info('Skipping data validation due to empty case')
 
     worksheet.protection.sheet = True
     worksheet.protection.password = "Aktbob"
