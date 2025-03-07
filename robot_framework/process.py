@@ -625,8 +625,13 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             cell.value = "Dokumentlink"
             cell.hyperlink = url
             cell.style = "Hyperlink"
+    # Log row count and column I values
+    orchestrator_connection.log_info(f"Max row: {worksheet.max_row}")
 
-    # Add strict data validation for columns I, J, and K
+    # Extract and log values from column I
+    column_i_values = [worksheet[f"I{row}"].value for row in range(2, worksheet.max_row + 1)]
+    orchestrator_connection.log_info(f"Column I values: {column_i_values}")
+        # Add strict data validation for columns I, J, and K
     validation_i = DataValidation(type="list", formula1='"Ja,Nej"', allow_blank=False, showErrorMessage=True)
     validation_i.error = "Vælg venligt enten Ja eller Nej."
     validation_i.errorTitle = "Ugyldig værdi"
