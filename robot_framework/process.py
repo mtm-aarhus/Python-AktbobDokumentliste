@@ -444,11 +444,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             aktid_number += 1
 
     ## Convert 'Akt ID' to string, strip spaces, then convert to numeric
-    # data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
+    data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
 
     # Sort values
-    # data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
-
+    data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
+    
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
@@ -626,6 +626,10 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             cell.value = "Dokumentlink"
             cell.hyperlink = url
             cell.style = "Hyperlink"
+    orchestrator_connection.log_info(f"Worksheet max_row: {worksheet.max_row}")
+    orchestrator_connection.log_info(f"DataFrame shape: {data_table.shape}")  # Logs number of rows and columns
+    orchestrator_connection.log_info(f"DataFrame columns: {list(data_table.columns)}")  # Logs column names
+    orchestrator_connection.log_info(f"First few rows:\n{data_table.head().to_string()}")  # Logs first few rows
 
     # Add strict data validation for columns I, J, and K
     validation_i = DataValidation(type="list", formula1='"Ja,Nej"', allow_blank=False, showErrorMessage=True)
