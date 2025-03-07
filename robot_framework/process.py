@@ -673,12 +673,17 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     validation_k.error = "Please select one of the provided options."
     validation_k.errorTitle = "Invalid Input"
     worksheet.add_data_validation(validation_k)
-    if worksheet.max_row > 1:
+    # Ensure data validation is applied if there are data rows (excluding headers)
+    if worksheet.max_row > 1:  # Meaning there is at least one data row
         validation_i.add(f"I2:I{worksheet.max_row}")
         validation_j.add(f"J2:J{worksheet.max_row}")
         validation_k.add(f"K2:K{worksheet.max_row}")
     else:
-        orchestrator_connection.log_info('Skipping data validation due to empty case')
+        orchestrator_connection.log_info("No data rows available, applying validation only to an empty row.")
+        validation_i.add("I2")  # Apply validation to row 2 (empty row placeholder)
+        validation_j.add("J2")
+        validation_k.add("K2")
+
 
     worksheet.protection.sheet = True
     worksheet.protection.password = "Aktbob"
