@@ -400,7 +400,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         response.raise_for_status
         aktid_number = 1
         documents = json.loads(response.text)['documents']
-        orchestrator_connection.log_info(f'Len of docs {len(documents)}')
         # Process each row
         for i in range(len(documents)):
             # Extract and prepare data
@@ -449,6 +448,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     # Sort values
     data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
+    orchestrator_connection.log_info(f"DataFrame columns: {list(data_table.columns)}")
+
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
