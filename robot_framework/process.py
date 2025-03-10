@@ -450,6 +450,9 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     if not data_table.empty:
         data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
+    else:
+        empty_row = {col: "" for col in data_table.columns}
+        data_table = pd.DataFrame([empty_row])
 
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
 
@@ -517,11 +520,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     worksheet.column_dimensions[get_column_letter(COLUMN_C_INDEX)].width = MAX_COLUMN_C_WIDTH
 
     # Apply table formatting
-    if worksheet.max_row == 1:
-         data_range = f"A1:K2"  # Adjust the range to include all data
-         worksheet.append([""] * worksheet.max_column)  # Add an empty row
-    else:
-        data_range = f"A1:K{worksheet.max_row}"  # Adjust the range to include all data
+    data_range = f"A1:K{worksheet.max_row}"  # Adjust the range to include all data
     table = Table(displayName="SagsoversigtTable", ref=data_range)
 
     style = TableStyleInfo(
@@ -733,7 +732,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if os.path.exists(file_path):
         with open(file_path, "rb") as file_content:
             subfolder.upload_file(os.path.basename(file_path), file_content.read())
-            orchestrator_connection.log_info('File uploaded')
         ctx.execute_query()
         
     else:
