@@ -443,17 +443,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 }])], ignore_index=True)
             aktid_number += 1
 
-    ## Convert 'Akt ID' to string, strip spaces, then convert to numeric
-    data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
-
-    # Sort values
-    data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
-    # Save the pandas DataFrame to Excel
-    excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
-    data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
-
-    # Define the font path and size
-    FONT_PATH = "calibri.ttf"  # Replace with the path to your Calibri or desired font
+    # Define font settings
+    FONT_PATH = "calibri.ttf"  # Ensure this file exists in your directory
     FONT_SIZE = 11
 
     # Load the font
@@ -464,185 +455,106 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     # Function to calculate text dimensions in Excel units
     def calculate_text_dimensions(text, font, max_width_in_pixels):
-        # Create a dummy image for text measurement
         dummy_image = Image.new("RGB", (1, 1))
         draw = ImageDraw.Draw(dummy_image)
-
-        # Measure text size
         bbox = draw.textbbox((0, 0), text, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
-
-
-        # Convert pixel width to approximate Excel column width
-        excel_column_width = text_width / 5  # Adjust 7 as needed based on font and testing
-
-        # Calculate row height based on text wrapping
+        excel_column_width = text_width / 5
         lines = max(1, text_width // max_width_in_pixels + 1)
-        excel_row_height = lines * (text_height / 1.33)  # Approximate scaling for Excel row height
-
+        excel_row_height = lines * (text_height / 1.33)
         return excel_column_width, excel_row_height
 
-    # Open the Excel file for further formatting
+    # Ensure 'Akt ID' column is numeric and clean
+    data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
 
+    # Ensure valid data before saving
+    if not data_table.empty:
+        data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
+    else:
+        # If empty, add a placeholder row to prevent Excel formatting issues
+        data_table = pd.DataFrame({col: ["(Ingen data)"] for col in data_table.columns})
+
+    # Save to Excel
+    excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+    data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
+
+    # Open Excel file for formatting
     workbook = load_workbook(excel_file_path)
     worksheet = workbook["Sagsoversigt"]
 
-    # Adjust column widths dynamically
-    max_width_in_pixels = 382  # Adjust based on your target column width in pixels
+    # Ensure at least 2 rows exist (header + data row)
+    if worksheet.max_row == 1:
+        worksheet.append([""] * worksheet.max_column)  # Add an empty row
+    data_range = f"A1:K{worksheet.max_row}"
 
+    # Apply table formatting
+    table = Table(displayName="SagsoversigtTable", ref=data_range)
+    style = TableStyleInfo(name="TableStyleMedium2", showFirstColumn=False, showLastColumn=False,
+                        showRowStripes=True, showColumnStripes=False)
+    table.tableStyleInfo = style
+    worksheet.add_table(table)
+
+    # Apply column width formatting dynamically
+    max_width_in_pixels = 382
     for col_idx, column_cells in enumerate(worksheet.columns, start=1):
         max_length = 0
         for cell in column_cells:
-            if cell.value:  # Only consider cells with a value
-                # Measure text size using Pillow
+            if cell.value:
                 text = str(cell.value)
                 column_width, _ = calculate_text_dimensions(text, font, max_width_in_pixels)
                 max_length = max(max_length, column_width)
+        worksheet.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 4, 50)
 
-        adjusted_width = min(max_length + 4, 50)  # Add padding and limit maximum width
-        worksheet.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
+    # Specific column adjustments
+    COLUMN_C_INDEX, COLUMN_G_INDEX = 3, 7
+    worksheet.column_dimensions[get_column_letter(COLUMN_C_INDEX)].width = 50
 
-    COLUMN_C_INDEX = 3  # Column C (Dokumenttitel)
-    COLUMN_G_INDEX = 7  # Column G
-    MAX_COLUMN_C_WIDTH = 50  # Maximum width for Column C in Excel units
-    PIXELS_PER_EXCEL_UNIT = 7  # Conversion factor from Excel width to pixels
-    ROW_HEIGHT_PER_PIXEL = 0.75  # Conversion factor from pixels to Excel row height units
+    # Define header styling
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    for cell in worksheet[1]:
+        cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        cell.font = header_font
 
-    # Convert maximum column width to pixels
-    max_width_in_pixels = MAX_COLUMN_C_WIDTH * PIXELS_PER_EXCEL_UNIT
-
-    # Set column width for Column C
-    worksheet.column_dimensions[get_column_letter(COLUMN_C_INDEX)].width = MAX_COLUMN_C_WIDTH
-
-    # Apply table formatting
-    data_range = f"A1:K{worksheet.max_row}"  # Adjust the range to include all data
-    table = Table(displayName="SagsoversigtTable", ref=data_range)
-
-    style = TableStyleInfo(
-        name="TableStyleMedium2",
-        showFirstColumn=False,
-        showLastColumn=False,
-        showRowStripes=True,
-        showColumnStripes=False
-    )
-    table.tableStyleInfo = style
-    worksheet.add_table(table)
-    # Define a white font for the header row
-    if worksheet.max_row > 1:
-        header_font = Font(name="Calibri", size=11, bold=False, color="FFFFFF")  # White text
-    else:
-        header_font = Font(name="Calibri", size=11, bold=False, color='000000')  # White text
-
-    # Apply header styling and lock all cells by default
-    for row_idx, row in enumerate(worksheet.iter_rows(), start=1):
-        for cell in row:
-            if row_idx == 1:  # Header row
-                cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)  # Align text
-                cell.font = header_font  # Apply white font
-            else:  # Non-header rows
-                cell.alignment = Alignment(wrap_text=True)  # Wrap text for all rows
-                current_font = cell.font
-                cell.font = Font(
-                    name=current_font.name if current_font.name else "Calibri",
-                    size=11,
-                    italic=current_font.italic,
-                    vertAlign=current_font.vertAlign,
-                    underline=current_font.underline,
-                    strike=current_font.strike,
-                    color=current_font.color
-                )
-
-            # Lock all cells by default
-            cell.protection = Protection(locked=True)
-
-        # Unlock cells with dropdown menus (columns I, J, and K)
-        for col in ["I", "J", "K"]:
-            for row_idx in range(2, worksheet.max_row + 1):  # Exclude the header row
-                cell = worksheet[f"{col}{row_idx}"]
-                cell.protection = Protection(locked=False)
-        
-    index = [4, 5, 7, 8, 9, 10, 11]
-    words = [
-            "Dokumentkategori  ", "Dokumentdato ", "Bilag   ",
-            "Link til dokument", "Omfattet af ansøgningen? (Ja/Nej)",
-            "Gives der aktindsigt i dokumentet (Ja/Nej/Delvis)",
-            "Begrundelse hvis nej eller delvis"
-        ]
-    desired_widths = [len(word) + 3 for word in words]
-    for i in range(len(index)):
-        worksheet.column_dimensions[get_column_letter(index[i])].width = desired_widths[i]
-    ROW_HEIGHT_PER_PIXEL = 1  # Approximate conversion factor for Excel row height units
-
-    # Function to calculate row height dynamically
-    def calculate_row_height(text, font, max_width_in_pixels, cg):
-        # Create a dummy image for text measurement
+    # Apply row height adjustments for wrapped text
+    ROW_HEIGHT_PER_PIXEL = 1
+    def calculate_row_height(text, font, max_width_in_pixels):
         dummy_image = Image.new("RGB", (1, 1))
         draw = ImageDraw.Draw(dummy_image)
-
-        # Measure text size
         bbox = draw.textbbox((0, 0), text, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
-        if cg == "c":
-            max_width_in_pixels = 150
-        else:
-            max_width_in_pixels = 70
-        # Calculate the number of lines needed to fit the text
-        lines_required = max(1, (text_width / max_width_in_pixels)+1 )
+        lines_required = max(1, (text_width / max_width_in_pixels) + 1)
+        return lines_required * text_height * ROW_HEIGHT_PER_PIXEL
 
-        # Calculate the total height based on lines and single-line height
-        total_height_in_pixels = lines_required * text_height
-
-        # Convert pixels to Excel row height units
-        return total_height_in_pixels * ROW_HEIGHT_PER_PIXEL
-
-    # Iterate through rows and adjust row heights for Columns C and G
-    for row_idx in range(2, worksheet.max_row + 1):  # Skip the header row
-        row_height = 15  # Default row height
-
-        # Process Column C
-        cell_c = worksheet.cell(row=row_idx, column=COLUMN_C_INDEX)
-        if cell_c.value:  # If cell has a value
-            cell_c.alignment = Alignment(wrap_text=True)  # Enable text wrapping
-            text_c = str(cell_c.value)
-            height_c = calculate_row_height(text_c, font, max_width_in_pixels, "c")  # Calculate height
-            row_height = max(row_height, height_c)
-        
-        # Process Column G
-        cell_g = worksheet.cell(row=row_idx, column=COLUMN_G_INDEX)
-        if cell_g.value and ',' in str(cell_g.value):  # If cell contains a comma
-            cell_g.alignment = Alignment(wrap_text=True)  # Enable text wrapping
-            text_g = '\n'.join(str(cell_g.value).split(', '))  # Replace commas with newlines
-            cell_g.value = text_g  # Update cell value
-            height_g = calculate_row_height(text_g, font, max_width_in_pixels, "g")  # Calculate height
-            row_height = max(row_height, height_g)
-        # Apply the calculated row height to the row
+    # Adjust row heights for Columns C and G
+    for row_idx in range(2, worksheet.max_row + 1):
+        row_height = 15
+        for col_idx in [COLUMN_C_INDEX, COLUMN_G_INDEX]:
+            cell = worksheet.cell(row=row_idx, column=col_idx)
+            if cell.value:
+                cell.alignment = Alignment(wrap_text=True)
+                text = str(cell.value)
+                height = calculate_row_height(text, font, 150 if col_idx == COLUMN_C_INDEX else 70)
+                row_height = max(row_height, height)
         worksheet.row_dimensions[row_idx].height = row_height
 
-    # Add hyperlinks to URLs in column H
-    for row_idx in range(2, worksheet.max_row + 1):  # Skip header row
-        cell = worksheet.cell(row=row_idx, column=8)  # Column H
-        url = cell.value
-        if url:
-            cell.value = "Dokumentlink"
-            cell.hyperlink = url
-            cell.style = "Hyperlink"
+    # Add hyperlinks in column H
+    for row_idx in range(2, worksheet.max_row + 1):
+        cell = worksheet.cell(row=row_idx, column=8)
+        if cell.value:
+            cell.value, cell.hyperlink, cell.style = "Dokumentlink", cell.value, "Hyperlink"
 
-    # Add strict data validation for columns I, J, and K
+    # Add dropdown validations
     validation_i = DataValidation(type="list", formula1='"Ja,Nej"', allow_blank=False, showErrorMessage=True)
-    validation_i.error = "Vælg venligt enten Ja eller Nej."
-    validation_i.errorTitle = "Ugyldig værdi"
+    validation_i.error, validation_i.errorTitle = "Vælg venligst Ja eller Nej.", "Ugyldig værdi"
     worksheet.add_data_validation(validation_i)
-    
 
     validation_j = DataValidation(type="list", formula1='"Ja,Delvis,Nej"', allow_blank=False, showErrorMessage=True)
-    validation_j.error = "Vælg venligt enten Ja, Delvis eller Nej."
-    validation_j.errorTitle = "Ugyldig værdi"
+    validation_j.error, validation_j.errorTitle = "Vælg venligst Ja, Delvis eller Nej.", "Ugyldig værdi"
     worksheet.add_data_validation(validation_j)
-    
-    
 
+    # Create hidden sheet for dropdown options
     hidden_options = [
         "Internt dokument - ufærdigt arbejdsdokument",
         "Internt dokument - foreløbige og sagsforberedende overvejelser",
@@ -655,32 +567,28 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         "Tavshedsbelagte oplysninger - Andet (uddybes i afgørelsen)",
         " "
     ]
-
     hidden_sheet = workbook.create_sheet("VeryHidden")
     hidden_sheet.sheet_state = "veryHidden"
     for idx, option in enumerate(hidden_options, start=1):
         hidden_sheet.cell(row=idx, column=1, value=option)
 
-    validation_k = DataValidation(
-        type="list",
-        formula1=f"=VeryHidden!$A$1:$A${len(hidden_options)}",
-        allow_blank=False,
-        showErrorMessage=True
-    )
-    validation_k.error = "Please select one of the provided options."
-    validation_k.errorTitle = "Invalid Input"
+    # Add validation for column K using hidden sheet values
+    validation_k = DataValidation(type="list", formula1=f"=VeryHidden!$A$1:$A${len(hidden_options)}",
+                                allow_blank=False, showErrorMessage=True)
+    validation_k.error, validation_k.errorTitle = "Vælg en mulighed.", "Ugyldig indtastning"
     if worksheet.max_row > 1:
         validation_k.add(f"K2:K{worksheet.max_row}")
         validation_i.add(f"I2:I{worksheet.max_row}")
         validation_j.add(f"J2:J{worksheet.max_row}")
-    
     worksheet.add_data_validation(validation_k)
-    worksheet.protection.sheet = True
-    worksheet.protection.password = "Aktbob"
-    worksheet.protection.enable()
 
-    # Save the formatted Excel file
+    # Protect sheet
+    worksheet.protection.sheet, worksheet.protection.password = True, "Aktbob"
+
+    # Save final formatted Excel file
     workbook.save(excel_file_path)
+
+
 
     Mappe1 = str(DeskProID) +" - " + str(DeskProTitel)
     Mappe2 = str(SagsID) + " - " + str(SagsTitel)
