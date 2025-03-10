@@ -517,7 +517,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     worksheet.column_dimensions[get_column_letter(COLUMN_C_INDEX)].width = MAX_COLUMN_C_WIDTH
 
     # Apply table formatting
-    data_range = f"A1:K{worksheet.max_row}"  # Adjust the range to include all data
+    if worksheet.max_row == 1:
+         data_range = f"A1:K2"  # Adjust the range to include all data
+         worksheet.append([""] * worksheet.max_column)  # Add an empty row
+    else:
+        data_range = f"A1:K{worksheet.max_row}"  # Adjust the range to include all data
     table = Table(displayName="SagsoversigtTable", ref=data_range)
 
     style = TableStyleInfo(
