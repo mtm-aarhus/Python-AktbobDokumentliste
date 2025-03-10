@@ -572,6 +572,13 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     for idx, option in enumerate(hidden_options, start=1):
         hidden_sheet.cell(row=idx, column=1, value=option)
 
+    # Remove the placeholder row "(Ingen data)" if it exists
+    for row_idx in range(2, worksheet.max_row + 1):  # Start from row 2 (skip header)
+        cell = worksheet.cell(row=row_idx, column=1)  # Check first column
+        if cell.value == "(Ingen data)":
+            worksheet.delete_rows(row_idx)
+            break  # Exit loop after removing the first occurrence
+        
     # Add validation for column K using hidden sheet values
     validation_k = DataValidation(type="list", formula1=f"=VeryHidden!$A$1:$A${len(hidden_options)}",
                                 allow_blank=False, showErrorMessage=True)
@@ -580,18 +587,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         validation_k.add(f"K2:K{worksheet.max_row}")
         validation_i.add(f"I2:I{worksheet.max_row}")
         validation_j.add(f"J2:J{worksheet.max_row}")
-    # Remove the placeholder row "(Ingen data)" if it exists
-    for row_idx in range(2, worksheet.max_row + 1):  # Start from row 2 (skip header)
-        cell = worksheet.cell(row=row_idx, column=1)  # Check first column
-        if cell.value == "(Ingen data)":
-            worksheet.delete_rows(row_idx)
-            break  # Exit loop after removing the first occurrence
+
     worksheet.add_data_validation(validation_k)
 
     # Protect sheet
     worksheet.protection.sheet, worksheet.protection.password = True, "Aktbob"
-
-    
 
     # Save final formatted Excel file
     workbook.save(excel_file_path)
