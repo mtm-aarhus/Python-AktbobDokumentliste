@@ -446,8 +446,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     ## Convert 'Akt ID' to string, strip spaces, then convert to numeric
     data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
 
-    # Sort values
-    data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
+    if not data_table.empty:
+        data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
+
+    data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
+
     # Save the pandas DataFrame to Excel
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
@@ -631,13 +634,14 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     validation_i.error = "Vælg venligt enten Ja eller Nej."
     validation_i.errorTitle = "Ugyldig værdi"
     worksheet.add_data_validation(validation_i)
-    validation_i.add(f"I2:I{worksheet.max_row}")
+    
 
     validation_j = DataValidation(type="list", formula1='"Ja,Delvis,Nej"', allow_blank=False, showErrorMessage=True)
     validation_j.error = "Vælg venligt enten Ja, Delvis eller Nej."
     validation_j.errorTitle = "Ugyldig værdi"
     worksheet.add_data_validation(validation_j)
-    validation_j.add(f"J2:J{worksheet.max_row}")
+    
+    
 
     hidden_options = [
         "Internt dokument - ufærdigt arbejdsdokument",
@@ -663,11 +667,15 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         allow_blank=False,
         showErrorMessage=True
     )
+   
     validation_k.error = "Please select one of the provided options."
     validation_k.errorTitle = "Invalid Input"
+    if worksheet.max_row > 2:
+        validation_k.add(f"K2:K{worksheet.max_row}")
+        validation_i.add(f"I2:I{worksheet.max_row}")
+        validation_j.add(f"J2:J{worksheet.max_row}")
+    
     worksheet.add_data_validation(validation_k)
-    validation_k.add(f"K2:K{worksheet.max_row}")
-
     worksheet.protection.sheet = True
     worksheet.protection.password = "Aktbob"
     worksheet.protection.enable()
