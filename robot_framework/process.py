@@ -491,6 +491,13 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     workbook = load_workbook(excel_file_path)
     worksheet = workbook["Sagsoversigt"]
+    
+    # Ensure table range includes at least the header and one row
+    if worksheet.max_row == 1:  # Only headers, no data
+        worksheet.append([""] * worksheet.max_column)  # Add empty row
+        data_range = f"A1:K2"  # Force range for table
+    else:
+        data_range = f"A1:K{worksheet.max_row}"
 
     # Adjust column widths dynamically
     max_width_in_pixels = 382  # Adjust based on your target column width in pixels
