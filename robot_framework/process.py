@@ -465,17 +465,18 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         excel_row_height = lines * (text_height / 1.33)
         return excel_column_width, excel_row_height
 
-    # Ensure 'Akt ID' column is numeric and clean
+    if data_table.empty:
+        fake_row = {col: "(Ingen data)" for col in data_table.columns}
+        data_table = pd.DataFrame([fake_row])  # Add placeholder row
+
+    # Ensure 'Akt ID' is numeric and clean
     data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
 
-    # Ensure valid data before saving
+    # Sort values if the table is not empty
     if not data_table.empty:
         data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
-    else:
-        # If empty, add a placeholder row to prevent Excel formatting issues
-        data_table = pd.DataFrame({col: ["(Ingen data)"] for col in data_table.columns})
 
-    # Save to Excel
+    # 🟢 STEP 2: SAVE THE DATAFRAME TO EXCEL
     excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
 
@@ -486,9 +487,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Ensure at least 2 rows exist (header + data row)
     if worksheet.max_row == 1:
         worksheet.append([""] * worksheet.max_column)  # Add an empty row
-    data_range = f"A1:K{worksheet.max_row}"
 
-    # Apply table formatting
+    data_range = f"A1:K{worksheet.max_row}"
     table = Table(displayName="SagsoversigtTable", ref=data_range)
     style = TableStyleInfo(name="TableStyleMedium2", showFirstColumn=False, showLastColumn=False,
                         showRowStripes=True, showColumnStripes=False)
@@ -515,7 +515,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     for cell in worksheet[1]:
         cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
         cell.font = header_font
-
+    
     # Apply row height adjustments for wrapped text
     ROW_HEIGHT_PER_PIXEL = 1
     def calculate_row_height(text, font, max_width_in_pixels):
@@ -538,6 +538,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 height = calculate_row_height(text, font, 150 if col_idx == COLUMN_C_INDEX else 70)
                 row_height = max(row_height, height)
         worksheet.row_dimensions[row_idx].height = row_height
+    
+    for col in ["I", "J", "K"]:
+        for row_idx in range(2, worksheet.max_row + 1):  # Skip header
+            cell = worksheet[f"{col}{row_idx}"]
+            cell.protection = Protection(locked=False)  # Allow dropdown selection
 
     # Add hyperlinks in column H
     for row_idx in range(2, worksheet.max_row + 1):
@@ -548,11 +553,9 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Add dropdown validations
     validation_i = DataValidation(type="list", formula1='"Ja,Nej"', allow_blank=False, showErrorMessage=True)
     validation_i.error, validation_i.errorTitle = "Vælg venligst Ja eller Nej.", "Ugyldig værdi"
-    worksheet.add_data_validation(validation_i)
 
     validation_j = DataValidation(type="list", formula1='"Ja,Delvis,Nej"', allow_blank=False, showErrorMessage=True)
     validation_j.error, validation_j.errorTitle = "Vælg venligst Ja, Delvis eller Nej.", "Ugyldig værdi"
-    worksheet.add_data_validation(validation_j)
 
     # Create hidden sheet for dropdown options
     hidden_options = [
@@ -567,10 +570,25 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         "Tavshedsbelagte oplysninger - Andet (uddybes i afgørelsen)",
         " "
     ]
+
     hidden_sheet = workbook.create_sheet("VeryHidden")
     hidden_sheet.sheet_state = "veryHidden"
     for idx, option in enumerate(hidden_options, start=1):
         hidden_sheet.cell(row=idx, column=1, value=option)
+
+    # Add validation for column K using hidden sheet values
+    validation_k = DataValidation(type="list", formula1=f"=VeryHidden!$A$1:$A${len(hidden_options)}",
+                                allow_blank=False, showErrorMessage=True)
+    validation_k.error, validation_k.errorTitle = "Vælg en mulighed.", "Ugyldig indtastning"
+
+    first_data_row = 2 if worksheet.max_row > 1 else 1
+    validation_i.add(f"I{first_data_row}:I{worksheet.max_row}")
+    validation_j.add(f"J{first_data_row}:J{worksheet.max_row}")
+    validation_k.add(f"K{first_data_row}:K{worksheet.max_row}")
+
+    worksheet.add_data_validation(validation_i)
+    worksheet.add_data_validation(validation_j)
+    worksheet.add_data_validation(validation_k)
 
     # Remove the placeholder row "(Ingen data)" if it exists
     for row_idx in range(2, worksheet.max_row + 1):  # Start from row 2 (skip header)
@@ -578,22 +596,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         if cell.value == "(Ingen data)":
             worksheet.delete_rows(row_idx)
             break  # Exit loop after removing the first occurrence
-        
-    # Add validation for column K using hidden sheet values
-    validation_k = DataValidation(type="list", formula1=f"=VeryHidden!$A$1:$A${len(hidden_options)}",
-                                allow_blank=False, showErrorMessage=True)
-    validation_k.error, validation_k.errorTitle = "Vælg en mulighed.", "Ugyldig indtastning"
-    if worksheet.max_row > 1:
-        validation_k.add(f"K2:K{worksheet.max_row}")
-        validation_i.add(f"I2:I{worksheet.max_row}")
-        validation_j.add(f"J2:J{worksheet.max_row}")
 
-    worksheet.add_data_validation(validation_k)
+    worksheet.protection.sheet = True
+    worksheet.protection.password = "Aktbob"
+    worksheet.protection.enable()
 
-    # Protect sheet
-    worksheet.protection.sheet, worksheet.protection.password = True, "Aktbob"
-
-    # Save final formatted Excel file
     workbook.save(excel_file_path)
 
     Mappe1 = str(DeskProID) +" - " + str(DeskProTitel)
