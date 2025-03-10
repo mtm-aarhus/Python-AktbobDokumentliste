@@ -442,18 +442,14 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     "Begrundelse hvis nej eller delvis": ""
                 }])], ignore_index=True)
             aktid_number += 1
-    # Save the pandas DataFrame to Excel
-    excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
 
     ## Convert 'Akt ID' to string, strip spaces, then convert to numeric
     data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
 
-    if not data_table.empty:
-        data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
-    else:
-        empty_row = {col: "" for col in data_table.columns}
-        data_table = pd.DataFrame([empty_row])
-
+    # Sort values
+    data_table = data_table.sort_values(by='Akt ID', ascending=True, ignore_index=True)
+    # Save the pandas DataFrame to Excel
+    excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
     data_table.to_excel(excel_file_path, index=False, sheet_name="Sagsoversigt")
 
     # Define the font path and size
@@ -491,13 +487,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     workbook = load_workbook(excel_file_path)
     worksheet = workbook["Sagsoversigt"]
-    
-    # Ensure table range includes at least the header and one row
-    if worksheet.max_row == 1:  # Only headers, no data
-        worksheet.append([""] * worksheet.max_column)  # Add empty row
-        data_range = f"A1:K2"  # Force range for table
-    else:
-        data_range = f"A1:K{worksheet.max_row}"
 
     # Adjust column widths dynamically
     max_width_in_pixels = 382  # Adjust based on your target column width in pixels
@@ -540,7 +529,10 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     table.tableStyleInfo = style
     worksheet.add_table(table)
     # Define a white font for the header row
-    header_font = Font(name="Calibri", size=11, bold=False, color="FFFFFF")  # White text
+    if worksheet.max_row > 1:
+        header_font = Font(name="Calibri", size=11, bold=False, color="FFFFFF")  # White text
+    else:
+        header_font = Font(name="Calibri", size=11, bold=False, color='000000')  # White text
 
     # Apply header styling and lock all cells by default
     for row_idx, row in enumerate(worksheet.iter_rows(), start=1):
@@ -675,10 +667,9 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         allow_blank=False,
         showErrorMessage=True
     )
-   
     validation_k.error = "Please select one of the provided options."
     validation_k.errorTitle = "Invalid Input"
-    if worksheet.max_row > 2:
+    if worksheet.max_row > 1:
         validation_k.add(f"K2:K{worksheet.max_row}")
         validation_i.add(f"I2:I{worksheet.max_row}")
         validation_j.add(f"J2:J{worksheet.max_row}")
