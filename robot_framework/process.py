@@ -590,12 +590,18 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     worksheet.add_data_validation(validation_j)
     worksheet.add_data_validation(validation_k)
 
-    # Remove the placeholder row "(Ingen data)" if it exists
+    # 🟢 STEP 9: REMOVE THE FAKE ROW (IF IT WAS ADDED)
+    rows_to_delete = []  # Store rows that need to be removed
+
     for row_idx in range(2, worksheet.max_row + 1):  # Start from row 2 (skip header)
-        cell = worksheet.cell(row=row_idx, column=1)  # Check first column
-        if cell.value == "(Ingen data)":
-            worksheet.delete_rows(row_idx)
-            break  # Exit loop after removing the first occurrence
+        first_cell = worksheet.cell(row=row_idx, column=1)  # Check first column
+        if first_cell.value == "(Ingen data)":
+            rows_to_delete.append(row_idx)
+
+    # Delete rows from bottom to top to avoid index shifting issues
+    for row_idx in reversed(rows_to_delete):
+        worksheet.delete_rows(row_idx)
+
 
     worksheet.protection.sheet = True
     worksheet.protection.password = "Aktbob"
