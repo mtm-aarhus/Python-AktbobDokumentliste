@@ -729,6 +729,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if os.path.exists(file_path):
         with open(file_path, "rb") as file_content:
             subfolder.upload_file(os.path.basename(file_path), file_content.read())
+            orchestrator_connection.log_info('File uploaded')
         ctx.execute_query()
         
     else:
