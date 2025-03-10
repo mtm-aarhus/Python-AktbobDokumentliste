@@ -585,10 +585,15 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Protect sheet
     worksheet.protection.sheet, worksheet.protection.password = True, "Aktbob"
 
+    # Remove the placeholder row "(Ingen data)" if it exists
+    for row_idx in range(2, worksheet.max_row + 1):  # Start from row 2 (skip header)
+        cell = worksheet.cell(row=row_idx, column=1)  # Check first column
+        if cell.value == "(Ingen data)":
+            worksheet.delete_rows(row_idx)
+            break  # Exit loop after removing the first occurrence
+
     # Save final formatted Excel file
     workbook.save(excel_file_path)
-
-
 
     Mappe1 = str(DeskProID) +" - " + str(DeskProTitel)
     Mappe2 = str(SagsID) + " - " + str(SagsTitel)
