@@ -443,7 +443,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 }])], ignore_index=True)
             aktid_number += 1
     # Save the pandas DataFrame to Excel
-        excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+    excel_file_path = f"{SagsID}_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
 
     ## Convert 'Akt ID' to string, strip spaces, then convert to numeric
     data_table['Akt ID'] = pd.to_numeric(data_table['Akt ID'].astype(str).str.strip(), errors='coerce')
