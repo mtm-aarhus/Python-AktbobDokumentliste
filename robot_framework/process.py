@@ -466,7 +466,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         return excel_column_width, excel_row_height
 
     if data_table.empty:
-        fake_row = {col: "(Ingen data)" for col in data_table.columns}
+        fake_row = {col: "" for col in data_table.columns}
         data_table = pd.DataFrame([fake_row])  # Add placeholder row
 
     # Ensure 'Akt ID' is numeric and clean
