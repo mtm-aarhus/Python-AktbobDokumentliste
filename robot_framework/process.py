@@ -61,6 +61,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     DeskProID = str(queue_json["DeskproID"])
     DeskProTitel = str(queue_json["Titel"])
     orchestrator_connection.log_info(f'Processing {SagsID} in {DeskProTitel}')
+
     #Determining if it is a Nova-case or not
     pattern = r"^[A-Z]{3}-\d{4}-\d{6}"
 
@@ -466,6 +467,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         return excel_column_width, excel_row_height
 
     if data_table.empty:
+        tom_sag = True
         fake_row = {col: "" for col in data_table.columns}
         data_table = pd.DataFrame([fake_row])  # Add placeholder row
 
@@ -709,6 +711,39 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 
         except Exception as e:
             print(f"Failed to send success email: {e}")
+    
+    # def send_sag_empty_email(to_address: str | list[str], sags_id: str):
+
+    #     # Email subject
+    #     subject = f"{sags_id} er en tom sag"
+
+    #     # Email body (HTML)
+    #     body = f"""
+    #     <html>
+    #         <body>
+    #             <p>Sagen du laver en dokumentliste på er tom.</p>
+    #         </body>
+    #     </html>
+    #     """
+
+
+    #     # Create the email message
+    #     msg = EmailMessage()
+    #     msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
+    #     msg['From'] = SCREENSHOT_SENDER
+    #     msg['Subject'] = subject
+    #     msg.set_content("Please enable HTML to view this message.")
+    #     msg.add_alternative(body, subtype='html')
+    #     msg['Reply-To'] = UdviklerMail
+    #     msg['Bcc'] = UdviklerMail
+
+    #     # Send the email using SMTP
+    #     try:
+    #         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+    #             smtp.send_message(msg)
+                
+    #     except Exception as e:
+    #         print(f"Failed to send success email: {e}")
 
     if log:
         orchestrator_connection.log_info("Sending email")
@@ -720,8 +755,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Construct the full SharePoint URL
     SharepointLink = f"{API_url}/Delte%20dokumenter/Dokumentlister/{Mappe1_encoded}/{Mappe2_encoded}"
 
-    if send_email:
+    if send_email and tom_sag != True:
         send_success_email(MailModtager, SagsID, DeskProID, link_url)
+    # if send_email and tom_sag == True:
+    #     send_sag_empty_email(MailModtager, SagsID)
+    #     orchestrator_connection.log_info('Email sent of empty case')
 
     if log:
         orchestrator_connection.log_info("Tilføjer link til Podio")
