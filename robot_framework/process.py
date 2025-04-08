@@ -28,8 +28,6 @@ from email.message import EmailMessage
 from PIL import ImageFont, ImageDraw, Image
 import pytz
 import uuid
-# from GenerateNovaCase import invoke_GenerateNovaCase
-# from GetKmdAcessToken import GetKMDToken
 import GenerateNovaCase
 import GetKmdAcessToken
 
@@ -63,9 +61,9 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     PodioID = str(queue_json["PodioID"])
     DeskProID = str(queue_json["DeskproID"])
     DeskProTitel = str(queue_json["Titel"])
-    IndsenderNavn = str(queue_json('IndsenderNavn'))
-    IndsenderMail = str(queue_json('IndsenderMail'))
-    AktindsigtsDato = str(queue_json('AktindsigtsDato'))
+    IndsenderNavn = str(queue_json['IndsenderNavn'])
+    IndsenderMail = str(queue_json['IndsenderMail'])
+    AktindsigtsDato = str(queue_json['AktindsigtsDato'])
     orchestrator_connection.log_info(f'Processing {SagsID} in {DeskProTitel}')
 
     #Determining if it is a Nova-case or not
