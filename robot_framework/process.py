@@ -814,4 +814,4 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         os.remove(excel_file_path)
     if NovaSag:
         KMD_access_token = GetKmdAcessToken.GetKMDToken(orchestrator_connection= orchestrator_connection)
-        GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= SagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, Aktindsigtsdato = AktindsigtsDato, orchestrator_connection= orchestrator_connection )
+        GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= SagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, Aktindsigtsdato = AktindsigtsDato, orchestrator_connection= orchestrator_connection, case_uuid = )
