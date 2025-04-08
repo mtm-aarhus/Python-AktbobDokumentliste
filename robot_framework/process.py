@@ -65,6 +65,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     IndsenderMail = str(queue_json['IndsenderMail'])
     AktindsigtsDato = str(queue_json['AktindsigtsDato'])
     orchestrator_connection.log_info(f'Processing {SagsID} in {DeskProTitel}')
+    AktSagsURL = str(queue_json['AktSagsURL'])
 
     #Determining if it is a Nova-case or not
     pattern = r"^[A-Z]{3}-\d{4}-\d{6}"
@@ -812,4 +813,4 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         os.remove(excel_file_path)
     if NovaSag:
         KMD_access_token = GetKmdAcessToken.GetKMDToken(orchestrator_connection= orchestrator_connection)
-        GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= SagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, AktindsigtsDato = AktindsigtsDato, orchestrator_connection= orchestrator_connection, DeskProID = DeskProID)
+        GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= AktSagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, AktindsigtsDato = AktindsigtsDato, orchestrator_connection= orchestrator_connection, DeskProID = DeskProID)
