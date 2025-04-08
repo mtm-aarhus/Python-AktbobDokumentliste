@@ -530,13 +530,13 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     "bfeNumber": bfeNumber
 
                 },
-                "UserdefinedFields": [
-                        {
-                            "type": "1. Politisk kategori",
-                            "value": "Aktindsigt"
-                        }
-                    ]
-            }  
+                "userdefindefields": [
+                            {   "typeName":"1. Politisk kategori",
+                                "type": "1. Politisk kategori",
+                                "value": "Aktindsigt"
+                            }
+                        ]
+            } 
         }
         # Make the API request
         try:
