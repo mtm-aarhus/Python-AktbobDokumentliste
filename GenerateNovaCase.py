@@ -11,8 +11,10 @@ import io
 import re
 import pyodbc
 from GetKmdAcessToken import GetKMDToken
-def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL, IndsenderNavn, IndsenderMail, AktindsigtsDato, DeskProID, DeskProAPIKey, Aktindsigtsdato, orchestrator_connection: OrchestratorConnection):
+def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL, IndsenderNavn, IndsenderMail, DeskProID, AktindsigtsDato, orchestrator_connection: OrchestratorConnection):
     Server = orchestrator_connection.get_constant('SqlServer').value
+    DeskProAPI = orchestrator_connection.get_credential("DeskProAPI") #Credential
+    DeskProAPIKey = DeskProAPI.password  
     AktindsigtsDato = AktindsigtsDato.rstrip('Z') # sletter bare Z 
 
     def store_case_uuid(deskpro_id, case_uuid):
