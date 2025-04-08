@@ -28,6 +28,9 @@ from email.message import EmailMessage
 from PIL import ImageFont, ImageDraw, Image
 import pytz
 import uuid
+import GenerateNovaCase
+from GenerateNovaCase import invoke_GenerateNovaCase
+from GetKmdAcessToken import GetKMDToken
 
 # pylint: disable-next=unused-argument
 def process(orchestrator_connection: OrchestratorConnection, queue_element: QueueElement | None = None) -> None:
@@ -46,7 +49,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     #Define developer mail
     UdviklerMail = orchestrator_connection.get_constant("balas").value
 
-
     #Get Robot Credentials
     RobotCredentials = orchestrator_connection.get_credential("Robot365User")
     RobotUsername = RobotCredentials.username
@@ -60,6 +62,9 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     PodioID = str(queue_json["PodioID"])
     DeskProID = str(queue_json["DeskproID"])
     DeskProTitel = str(queue_json["Titel"])
+    IndsenderNavn = str(queue_json('IndsenderNavn'))
+    IndsenderMail = str(queue_json('IndsenderMail'))
+    AktindsigtsDato = str(queue_json('AktindsigtsDato'))
     orchestrator_connection.log_info(f'Processing {SagsID} in {DeskProTitel}')
 
     #Determining if it is a Nova-case or not
@@ -465,6 +470,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         lines = max(1, text_width // max_width_in_pixels + 1)
         excel_row_height = lines * (text_height / 1.33)
         return excel_column_width, excel_row_height
+    
+    tom_sag = False
 
     if data_table.empty:
         tom_sag = True
@@ -712,38 +719,36 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         except Exception as e:
             print(f"Failed to send success email: {e}")
     
-    # def send_sag_empty_email(to_address: str | list[str], sags_id: str):
+    def send_sag_empty_email(to_address: str | list[str], sags_id: str):
 
-    #     # Email subject
-    #     subject = f"{sags_id} er en tom sag"
+        # Email subject
+        subject = f"{sags_id} er en tom sag"
 
-    #     # Email body (HTML)
-    #     body = f"""
-    #     <html>
-    #         <body>
-    #             <p>Sagen du laver en dokumentliste på er tom.</p>
-    #         </body>
-    #     </html>
-    #     """
+        # Email body (HTML)
+        body = f"""
+        <html>
+            <body>
+                <p>Sagen {sags_id} er en tom sag. Vær opmærksom på, at processen ikke kan behandle tomme sager.</p>
+            </body>
+        </html>
+        """
+        # Create the email message
+        msg = EmailMessage()
+        msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
+        msg['From'] = SCREENSHOT_SENDER
+        msg['Subject'] = subject
+        msg.set_content("Please enable HTML to view this message.")
+        msg.add_alternative(body, subtype='html')
+        msg['Reply-To'] = UdviklerMail
+        msg['Bcc'] = UdviklerMail
 
-
-    #     # Create the email message
-    #     msg = EmailMessage()
-    #     msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
-    #     msg['From'] = SCREENSHOT_SENDER
-    #     msg['Subject'] = subject
-    #     msg.set_content("Please enable HTML to view this message.")
-    #     msg.add_alternative(body, subtype='html')
-    #     msg['Reply-To'] = UdviklerMail
-    #     msg['Bcc'] = UdviklerMail
-
-    #     # Send the email using SMTP
-    #     try:
-    #         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-    #             smtp.send_message(msg)
+        # Send the email using SMTP
+        try:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+                smtp.send_message(msg)
                 
-    #     except Exception as e:
-    #         print(f"Failed to send success email: {e}")
+        except Exception as e:
+            print(f"Failed to send success email: {e}")
 
     if log:
         orchestrator_connection.log_info("Sending email")
@@ -755,11 +760,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Construct the full SharePoint URL
     SharepointLink = f"{API_url}/Delte%20dokumenter/Dokumentlister/{Mappe1_encoded}/{Mappe2_encoded}"
 
-    if send_email and tom_sag != True:
+    if send_email and tom_sag is not True:
         send_success_email(MailModtager, SagsID, DeskProID, link_url)
-    # if send_email and tom_sag == True:
-    #     send_sag_empty_email(MailModtager, SagsID)
-    #     orchestrator_connection.log_info('Email sent of empty case')
+    if send_email and tom_sag is True:
+        send_sag_empty_email(MailModtager, SagsID)
+        orchestrator_connection.log_info('Email sent of empty case')
 
     if log:
         orchestrator_connection.log_info("Tilføjer link til Podio")
@@ -806,3 +811,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     if os.path.exists(excel_file_path):
         os.remove(excel_file_path)
+    if NovaSag:
+        KMD_access_token = GetKMDToken(orchestrator_connection= orchestrator_connection)
+        GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= SagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, Aktindsigtsdato = AktindsigtsDato, orchestrator_connection= orchestrator_connection )
