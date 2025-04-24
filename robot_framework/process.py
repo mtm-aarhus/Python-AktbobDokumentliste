@@ -684,7 +684,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             sharepoint_link (str): The SharePoint link to include in the email body.
         """
         # Email subject
-        subject = f"Robotten har nu oprettet en dokumentliste for {sags_id}"
+        subject = f"{sags_id}: Robotten har nu oprettet en dokumentliste"
 
         # Email body (HTML)
         body = f"""
