@@ -776,7 +776,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     SharepointLink = f"{API_url}/Delte%20dokumenter/Dokumentlister/{Mappe1_encoded}/{Mappe2_encoded}"
 
     if send_email and tom_sag is not True:
-        send_success_email(MailModtager, SagsID, link_url, MappeNavn = str(Mappe1))
+        send_success_email(MailModtager, SagsID, link_url, MappeNavn = str(Mappe1), memo_tunnel = memo_tunnel)
     if send_email and tom_sag is True:
         send_sag_empty_email(MailModtager, SagsID)
         orchestrator_connection.log_info('Email sent of empty case')
