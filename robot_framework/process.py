@@ -420,6 +420,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
             # Append data to DataFrame
             if "tunnel_marking" in Dokumenttitel.lower() or "memometadata" in Dokumenttitel.lower() or "fletteliste" in Dokumenttitel.lower():
+                memo_tunnel = True
                 data_table = pd.concat([data_table, pd.DataFrame([{
                     "Akt ID": AktID,
                     "Dok ID": DokID,
@@ -673,10 +674,9 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     SMTP_PORT = 25
     SCREENSHOT_SENDER = "aktbob@aarhus.dk"
 
-    def send_success_email(to_address: str | list[str], sags_id: str, deskpro_id: str, sharepoint_link: str):
+    def send_success_email(to_address: str | list[str], sags_id: str, sharepoint_link: str, MappeNavn, memo_tunnel: bool):
         """
         Sends an email notification with the provided body and subject.
-
         Args:
             to_address (str | list[str]): Email address or list of addresses to send the notification.
             sags_id (str): The ID of the case (SagsID) used in the email subject.
@@ -684,23 +684,38 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             sharepoint_link (str): The SharePoint link to include in the email body.
         """
         # Email subject
-        subject = f"{sags_id}: Robotten har nu oprettet en dokumentliste"
-
-        # Email body (HTML)
-        body = f"""
-        <html>
-            <body>
-                <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Sæt herefter robotten igang med at flytte filerne til FilArkiv når du har udfyldt hele listen.</p>
-                <br>
-                <a href="{sharepoint_link}">Link til dokumentlisten</a>
-                <br><br>
-                <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
-                <br>
-                <a href="https://mtmsager.aarhuskommune.dk/app?return=#/t/ticket/{deskpro_id}">Link til aktindsigten i Deskpro</a>
-            </body>
-        </html>
-        """
-
+        subject = f"{sags_id}: Dokumentliste oprettet"
+        if memo_tunnel != True:
+            # Email body (HTML)
+            body = f"""
+            <html>
+                <body>
+                    <p>Sag: {MappeNavn}. </p>
+                    <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Herefter kan du i Podio sætte screeningen af de valgte filer i gang.</p>
+                    <br>
+                    <a href="{sharepoint_link}">Link til dokumentlisten</a>
+                    <br><br>
+                    <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
+                    <br>
+                </body>
+            </html>
+            """
+        else:
+            # Email body (HTML)
+            body = f"""
+            <html>
+                <body>
+                    <p>Sag: {MappeNavn}. </p>
+                    <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Herefter kan du i Podio sætte screeningen af de valgte filer i gang.</p>
+                    <p>Vær opmærksom på, at der er dokumenter af typen "memometadata", "tunnel_marking" eller fra flettelisten. Disse dokumenttyper kan indeholde personfølsomme oplysninger, og er derfor sat som ikke omfattet af aktindsigten i dokumentlisten. Hvis du vurderer, at det er forkert, kan du ændre status tilbage til 'ja'. </p>
+                    <br>
+                    <a href="{sharepoint_link}">Link til dokumentlisten</a>
+                    <br><br>
+                    <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
+                    <br>
+                </body>
+            </html>
+            """
         # Create the email message
         msg = EmailMessage()
         msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
@@ -717,7 +732,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 smtp.send_message(msg)
                 
         except Exception as e:
-            print(f"Failed to send success email: {e}")
+                print(f"Failed to send success email: {e}")
     
     def send_sag_empty_email(to_address: str | list[str], sags_id: str):
 
@@ -761,7 +776,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     SharepointLink = f"{API_url}/Delte%20dokumenter/Dokumentlister/{Mappe1_encoded}/{Mappe2_encoded}"
 
     if send_email and tom_sag is not True:
-        send_success_email(MailModtager, SagsID, DeskProID, link_url)
+        send_success_email(MailModtager, SagsID, link_url, MappeNavn = str(Mappe1))
     if send_email and tom_sag is True:
         send_sag_empty_email(MailModtager, SagsID)
         orchestrator_connection.log_info('Email sent of empty case')
