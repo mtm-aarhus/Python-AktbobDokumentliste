@@ -709,7 +709,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 <body>
                     <p>Sag: {MappeNavn}. </p>
                     <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Herefter kan du i Podio sætte screeningen af de valgte filer i gang.</p>
-                    <p>Vær opmærksom på, at der er dokumenter af typen "memometadata", "tunnel_marking" eller fra flettelisten. Disse dokumenttyper kan indeholde personfølsomme oplysninger, og er derfor sat som ikke omfattet af aktindsigten i dokumentlisten. Hvis du vurderer, at det er forkert, kan du ændre status tilbage til 'ja'. </p>
+                    <p>Vær opmærksom på, at der er dokumenter af typen "memometadata", "tunnel_marking" eller fra flettelisten. Disse dokumenttyper kan indeholde personfølsomme oplysninger, og er derfor automatisk sat til 'nej'. Hvis du vurderer, at det er forkert, kan du ændre status tilbage til 'ja'. </p>
                     <br>
                     <a href="{sharepoint_link}">Link til dokumentlisten</a>
                     <br><br>
