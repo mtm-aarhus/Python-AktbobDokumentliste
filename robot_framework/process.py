@@ -66,6 +66,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     AktindsigtsDato = str(queue_json['AktindsigtsDato'])
     orchestrator_connection.log_info(f'Processing {SagsID} in {DeskProTitel}')
     AktSagsURL = str(queue_json['AktSagsURL'])
+    memo_tunnel = False
 
     #Determining if it is a Nova-case or not
     pattern = r"^[A-Z]{3}-\d{4}-\d{6}"
@@ -345,6 +346,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
                     # Append data to DataFrame
                     if "tunnel_marking" in Dokumenttitel.lower() or "memometadata" in Dokumenttitel.lower():
+                        memo_tunnel = True
                         data_table = pd.concat([data_table, pd.DataFrame([{
                             "Akt ID": AktID,
                             "Dok ID": DokID,
@@ -435,7 +437,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     "Begrundelse hvis nej eller delvis": "Tavshedsbelagte oplysninger - om private forhold"
                 }])], ignore_index=True)
             else:
-                memo_tunnel = False
                 data_table = pd.concat([data_table, pd.DataFrame([{
                     "Akt ID": AktID,
                     "Dok ID": DokID,
