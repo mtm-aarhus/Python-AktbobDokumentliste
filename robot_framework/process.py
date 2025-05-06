@@ -435,6 +435,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     "Begrundelse hvis nej eller delvis": "Tavshedsbelagte oplysninger - om private forhold"
                 }])], ignore_index=True)
             else:
+                memo_tunnel = False
                 data_table = pd.concat([data_table, pd.DataFrame([{
                     "Akt ID": AktID,
                     "Dok ID": DokID,
