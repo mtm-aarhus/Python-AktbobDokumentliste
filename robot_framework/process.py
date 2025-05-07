@@ -826,6 +826,23 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     patch_case_response = requests.patch(patch_case_url, headers=headers, json=patch_case_body)
     patch_case_response.raise_for_status()
 
+
+    #Putting sharepointlink to case top folder in deskpro
+
+    deskproURL = orchestrator_connection.get_constant('DeskproOvermappeAPILink').value
+
+    payload = json.dumps({
+        "deskproTicketId": f'{DeskProID}',
+        "overmappeURL": f'{API_url}/Delte Dokumenter/Aktindsigter/{Mappe1_encoded}'
+        })
+    
+    headers = {
+        'Content-Type': 'application/json'
+        }
+    response_deskpro = requests.request("POST", deskproURL, headers=headers, data=payload)
+    response_deskpro.raise_for_status()
+    
+
     if os.path.exists(excel_file_path):
         os.remove(excel_file_path)
     if NovaSag:
