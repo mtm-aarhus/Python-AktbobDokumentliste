@@ -833,7 +833,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     payload = json.dumps({
         "deskproTicketId": f'{DeskProID}',
-        "overmappeURL": f'{API_url}/Delte Dokumenter/Aktindsigter/{Mappe1}'
+        "overmappeURL": f'{API_url}/Delte%20Dokumenter/Aktindsigter/{Mappe1_encoded}'
         })
     
     headers = {
