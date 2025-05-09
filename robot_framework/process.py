@@ -578,7 +578,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         "Andre dokumenter - vedr. udførelse af sekretariatsopgave",
         "Andre dokumenter - Andet (uddybes i afgørelse)",
         "Tavshedsbelagte oplysninger - om private forhold",
-        "Tavshedsbelagte oplysninger - om erhvervsmæssige forhold",
+        "Tavshedsbelagte oplysninger - forretningsforhold",
         "Tavshedsbelagte oplysninger - Andet (uddybes i afgørelsen)",
         " "
     ]
