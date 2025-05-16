@@ -689,6 +689,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         "Vær opmærksom på, at denne sag indeholder dokumenter, der er nul-dokumenter."
         if nul_dokument else ""
     )
+    orchestrator_connection.log_info(f'{memodata_obs} {nuldokument_obs}')
 
     body = f"""
     <html>
