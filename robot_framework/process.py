@@ -67,6 +67,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     orchestrator_connection.log_info(f'Processing {SagsID} in {DeskProTitel}')
     AktSagsURL = str(queue_json['AktSagsURL'])
     memo_tunnel = False
+    nul_dokument = False
 
     #Determining if it is a Nova-case or not
     pattern = r"^[A-Z]{3}-\d{4}-\d{6}"
@@ -329,6 +330,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
                     if len(Dokumenttitel) < 2:
                         Dokumenttitel = item.get("FileLeafRef.Name", "")
+                    if str(AktID) = '0':
+                        nul_dokument = True
 
                     if log:
                         orchestrator_connection.log_info(f"AktID: {AktID}")
@@ -675,8 +678,37 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
     SMTP_PORT = 25
     SCREENSHOT_SENDER = "aktbob@aarhus.dk"
+    
+    memodata_obs = (
+        "Vær opmærksom på, at denne sag indeholder dokumenter af typen memometadata, tunnel-marking eller fra flettelisten. Disse er automatisk sat til 'Nej', da de kan indeholde fortrolige oplysninger. Er dette forkert, kan du blot sætte dem til 'Ja' eller 'Delvis'."
+        if memo_tunnel else ""
+    )
 
-    def send_success_email(to_address: str | list[str], sags_id: str, sharepoint_link: str, MappeNavn, memo_tunnel: bool):
+    nuldokument_obs = (
+        "Vær opmærksom på, at denne sag indeholder dokumenter, der er nul-dokumenter."
+        if nul_dokument else ""
+    )
+
+    body = f"""
+    <html>
+        <body>
+            <p>Sag: {SagsID}. </p>
+            <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Herefter kan du i Podio sætte screeningen af de valgte filer i gang.</p>
+            <p> {memodata_obs} </p>
+            <br>
+            <a href="{link_url}">Link til dokumentlisten</a>
+            <br><br>
+            <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
+            <br>
+            <p> Vejledning findes på <a href="https://aarhuskommune.atlassian.net/wiki/spaces/AB/pages/64979049/AKTBOB+--+Vejledning" target="_blank">AKTBOB – Vejledning</a> </p>
+            <p> {nuldokument_obs} </p>
+
+        </body>
+    </html>
+    """
+
+
+    def send_success_email(to_address: str | list[str], sags_id: str, sharepoint_link: str, MappeNavn, body):
         """
         Sends an email notification with the provided body and subject.
         Args:
@@ -687,41 +719,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         """
         # Email subject
         subject = f"{sags_id}: Dokumentliste oprettet"
-        if memo_tunnel != True:
-            # Email body (HTML)
-            body = f"""
-            <html>
-                <body>
-                    <p>Sag: {MappeNavn}. </p>
-                    <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Herefter kan du i Podio sætte screeningen af de valgte filer i gang.</p>
-                    <br>
-                    <a href="{sharepoint_link}">Link til dokumentlisten</a>
-                    <br><br>
-                    <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
-                    <br>
-                    <p> Vejledning findes på <a href="https://aarhuskommune.atlassian.net/wiki/spaces/AB/pages/64979049/AKTBOB+--+Vejledning" target="_blank">AKTBOB – Vejledning</a> </p>
-
-                </body>
-            </html>
-            """
-        else:
-            # Email body (HTML)
-            body = f"""
-            <html>
-                <body>
-                    <p>Sag: {MappeNavn}. </p>
-                    <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Herefter kan du i Podio sætte screeningen af de valgte filer i gang.</p>
-                    <p>Vær opmærksom på, at der er dokumenter af typen "memometadata", "tunnel_marking" eller fra flettelisten. Disse dokumenttyper kan indeholde personfølsomme oplysninger, og er derfor automatisk sat til 'nej'. Hvis du vurderer, at det er forkert, kan du ændre status tilbage til 'ja'. </p>
-                    <br>
-                    <a href="{sharepoint_link}">Link til dokumentlisten</a>
-                    <br><br>
-                    <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
-                    <br>
-                    <p> Vejledning findes på <a href="https://aarhuskommune.atlassian.net/wiki/spaces/AB/pages/64979049/AKTBOB+--+Vejledning" target="_blank">AKTBOB – Vejledning</a> </p>
-
-                </body>
-            </html>
-            """
         # Create the email message
         msg = EmailMessage()
         msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
@@ -782,7 +779,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     SharepointLink = f"{API_url}/Delte%20dokumenter/Dokumentlister/{Mappe1_encoded}/{Mappe2_encoded}"
 
     if send_email and tom_sag is not True:
-        send_success_email(MailModtager, SagsID, link_url, MappeNavn = str(Mappe1), memo_tunnel = memo_tunnel)
+        send_success_email(MailModtager, link_url, MappeNavn = str(Mappe1))
     if send_email and tom_sag is True:
         send_sag_empty_email(MailModtager, SagsID)
         orchestrator_connection.log_info('Email sent of empty case')
