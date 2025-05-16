@@ -330,7 +330,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
                     if len(Dokumenttitel) < 2:
                         Dokumenttitel = item.get("FileLeafRef.Name", "")
-                    if str(AktID) = '0':
+                    if str(AktID) == '0':
                         nul_dokument = True
 
                     if log:
@@ -678,7 +678,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
     SMTP_PORT = 25
     SCREENSHOT_SENDER = "aktbob@aarhus.dk"
-    
+
     memodata_obs = (
         "Vær opmærksom på, at denne sag indeholder dokumenter af typen memometadata, tunnel-marking eller fra flettelisten. Disse er automatisk sat til 'Nej', da de kan indeholde fortrolige oplysninger. Er dette forkert, kan du blot sætte dem til 'Ja' eller 'Delvis'."
         if memo_tunnel else ""
