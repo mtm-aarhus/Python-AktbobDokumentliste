@@ -327,11 +327,10 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     Dokumenttitel = item.get("Title", "")
                     DokID = str(item.get("DocID"))
                     DokumentKategori = str(item.get("Korrespondance"))
-                    orchestrator_connection.log_info(f'AktID (repr): {repr(AktID)}')  # viser skjulte tegn
 
                     if len(Dokumenttitel) < 2:
                         Dokumenttitel = item.get("FileLeafRef.Name", "")
-                    if AktID == 0:
+                    if str(AktID).strip() == '0':
                         orchestrator_connection.log_info('0 dokument detekteret')
                         nul_dokument = True
 
@@ -690,7 +689,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         "Vær opmærksom på, at denne sag indeholder dokumenter, der er nul-dokumenter."
         if nul_dokument else ""
     )
-    orchestrator_connection.log_info(f'{nul_dokument} {nuldokument_obs}')
 
     body = f"""
     <html>
