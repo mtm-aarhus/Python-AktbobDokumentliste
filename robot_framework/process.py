@@ -330,7 +330,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
                     if len(Dokumenttitel) < 2:
                         Dokumenttitel = item.get("FileLeafRef.Name", "")
-                    if str(AktID) == '0':
+                    if AktID == 0:
                         nul_dokument = True
 
                     if log:
