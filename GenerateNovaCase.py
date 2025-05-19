@@ -18,8 +18,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
     AktindsigtsDato = AktindsigtsDato.rstrip('Z') # sletter bare Z 
 
     def store_case_uuid(deskpro_id, case_uuid):
-        
-        conn = pyodbc.connect("DRIVER={ODBC Driver 17 for SQL Server};" + f"SERVER={Server};DATABASE=PYORCHESTRATOR;Trusted_Connection=yes;")
+        conn = pyodbc.connect("DRIVER={ODBC Driver 17 for SQL Server};SERVER=srvsql29;DATABASE=PyOrchestrator;Trusted_Connection=yes")
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -94,7 +93,13 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             "buildingCase": {
             "propertyInformation":{
                 "bfeNumber": True,
-                "cadastralId": True
+                "cadastralId": True,
+                "cadastralNumbers":{ 
+                    "cadastralLetters": True, 
+                    "cadastralNumber":True, 
+                    "nationwideCadastralDistrictCode": True, 
+                    "nationwideCadastralDistrictName":True 
+         } 
          }
         }
     }
@@ -114,8 +119,38 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             availabilityCtrBy = case["availability"]["availabilityCtrBy"]
             
             # Extract bfeNumber from buildingCase -> propertyInformation
+            property_info = case.get("buildingCase", {}).get("propertyInformation", {})
             bfeNumber = case["buildingCase"]["propertyInformation"]["bfeNumber"]
             CadastralId = case["buildingCase"]["propertyInformation"]["cadastralId"]
+                    # Initialize cadastral variables
+            cadastralLetters = cadastralNumber = cadastralDistrictCode = cadastralDistrictName = None
+
+            # Extract cadastralNumbers if available 
+            cadastral_numbers = property_info.get("cadastralNumbers")
+            if cadastral_numbers and isinstance(cadastral_numbers, list) and len(cadastral_numbers) > 0:
+                first_cadastral = cadastral_numbers[0]
+                cadastralLetters = first_cadastral.get("cadastralLetters")
+                cadastralNumber = first_cadastral.get("cadastralNumber")
+                cadastralDistrictCode = first_cadastral.get("cadastralDistrictCode")
+                cadastralDistrictName = first_cadastral.get("cadastralDistrictName")
+                # Print cadastral-related values
+                print("CadastralID: ", CadastralId)
+                print("Cadastral Letters:", cadastralLetters)
+                print("Cadastral Number:", cadastralNumber)
+                print("Cadastral District Code:", cadastralDistrictCode)
+                print("Cadastral District Name:", cadastralDistrictName)
+            else:
+                print("No cadastral numbers found.")
+            CadastralBool = all([
+            CadastralId,
+            cadastralLetters,
+            cadastralNumber,
+            cadastralDistrictName,
+            cadastralDistrictCode
+            ])
+
+            # Optional: Print the result
+            print("CadastralBool:", CadastralBool)
 
             primary_case_parties = [
                 {
@@ -441,7 +476,8 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
         }
 
         # Define JSON payload
-        payload = {
+        if CadastralBool == True:
+          payload = {
             "common": {
                 "transactionId": TransactionID,
                 "uuid": CaseUuid  
@@ -526,18 +562,123 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     "buildingCaseClassName": "Aktindsigt"
                 },
                 "propertyInformation":{
+                    #"cadastralId": CadastralId, #Tjek om skal tilføjes.
+                    "bfeNumber": bfeNumber
+
+                },
+                "cadastralNumbers":[{
                     "cadastralId": CadastralId,
+                    "cadastralLetters": cadastralLetters,
+                    "cadastralNumber": cadastralNumber,
+                    "cadastralDistrictCode": cadastralDistrictCode,
+                    "cadastralDistrictName": cadastralDistrictName
+        }],
+                "userdefindefields": [
+                        {   "typeName":"1. Politisk kategori",
+                            "type": "1. Politisk kategori",
+                            "value": "Aktindsigt"
+                        }
+                    ]
+            }  
+        }
+        else:
+           payload = {
+            "common": {
+                "transactionId": TransactionID,
+                "uuid": CaseUuid  
+            },
+            "caseAttributes": {
+                "title": f"Test gustav - Anmodning om aktindsigt i {Sagsnummer}", # skal ændres til "Anmodning om aktindsigt i...."
+                "caseDate": AktindsigtsDato,
+                "caseCategory": "BomByg"
+            },
+            "caseClassification": {
+                "kleNumber": {"code": "02.00.00"}, 
+                "proceedingFacet": {"code": "A53"}
+            },
+            "state": "Opstaaet", 
+            "sensitivity": "Følsomme",
+            "caseworker": { 
+                "kspIdentity": {
+                    "novaUserId": "78897bfc-2a36-496d-bc76-07e7a6b0850e",
+                    "racfId": "AZX0075",
+                    "fullName": "Aktindsigter Novabyg"
+                }
+            },
+            "SensitivityCtrlBy": sensitivityCtrBy,
+            "AvailabilityCtrlBy": availabilityCtrBy,
+            "SecurityUnitCtrlBy": SecurityUnitCtrlBy,
+            "ResponsibleDepartmentCtrlBy": ResponsibleDepartmentCtrlBy,
+            "responsibleDepartment": {
+                "fkOrgIdentity": {
+                    "fkUuid": "15deb66c-1685-49ac-8344-cfbf84fe6d84",
+                    "type": "Afdeling",
+                    "fullName": "Digitalisering"
+                }
+            },
+            "caseParties": [
+                {
+                    "index": index,
+                    "identificationType": identificationType,
+                    "identification": identification, 
+                    "partyRole": partyRole,
+                    "partyRoleName": partyRoleName, 
+                    "participantRole": participantRole, 
+                    "name": name 
+                },
+                {
+                    "index": Index_Uuid,
+                    "identificationType": "Frit",
+                    "identification": IndsenderNavn,
+                    "partyRole": "IND",
+                    "partyRoleName": "Indsender",
+                    "participantRole": "Sekundær",
+                    "name": IndsenderNavn,
+                    "participantContactInformation": IndsenderMail
+                }
+            ],
+            "journalNotes": [
+                {
+                    "uuid": JournalUuid,
+                    "approved": True,
+                    "journalNoteAttributes":
+                    {
+                        "journalNoteDate": JournalDate, 
+                        "title": link_text,
+                        "editReasonApprovedJournalnote": "Oprettelse",
+                        "journalNoteAuthor": "AKTBOB",
+                        "author": {
+                            "fkOrgIdentity": {
+                                "fkUuid": "15deb66c-1685-49ac-8344-cfbf84fe6d84",
+                                "type": "Afdeling",
+                                "fullName": "Digitalisering"
+                                }
+                        },
+                        "journalNoteType": "Bruger",
+                        "format": "Ooxml",
+                        "note":base64_JournalNote
+
+                    }
+                }
+            ],
+            "buildingCase": {
+                "buildingCaseAttributes": {
+                    "buildingCaseClassId": "2a33734b-c596-4edf-93eb-23daae4bfc3e",
+                    "buildingCaseClassName": "Aktindsigt"
+                },
+                "propertyInformation":{
+                    #"cadastralId": CadastralId, #Tjek om skal tilføjes.
                     "bfeNumber": bfeNumber
 
                 },
                 "userdefindefields": [
-                            {   "typeName":"1. Politisk kategori",
-                                "type": "1. Politisk kategori",
-                                "value": "Aktindsigt"
-                            }
-                        ]
-            } 
-        }
+                        {   "typeName":"1. Politisk kategori",
+                            "type": "1. Politisk kategori",
+                            "value": "Aktindsigt"
+                        }
+                    ]
+            }  
+        } 
         # Make the API request
         try:
             response = requests.post(url, headers=headers, json=payload)
