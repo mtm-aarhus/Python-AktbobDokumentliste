@@ -704,22 +704,13 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             <ul>
             <li>
                 Kolonnen ”Omfattet af ansøgning”: 
-                Dokumentlisten omfatter alle dokumenterne på sagen. Marker med ”nej”, hvis der er dokumenter, der ikke er omfattet af ansøgningen.
-                <div style="margin-left: 2em;">
-                (Styrer sammen med næste kolonne, hvilke dokumenter der sendes til ansøger.)
-                </div>
+                Dokumentlisten omfatter alle dokumenterne på sagen. Marker med ”nej”, hvis der er dokumenter, der ikke er omfattet af ansøgningen. (Styrer sammen med næste kolonne, hvilke dokumenter der sendes til ansøger.)
             </li>
             <li>
-                Kolonnen ”Gives der aktindsigt i dokumentet?”: Marker for de dokumenter, der er omfattet af ansøgningen, om de skal udleveres.
-                <div style="margin-left: 2em;">
-                (Styrer sammen med foregående kolonne, hvilke dokumenter der sendes til ansøger.)
-                </div>
+                Kolonnen ”Gives der aktindsigt i dokumentet?”: Marker for de dokumenter, der er omfattet af ansøgningen, om de skal udleveres. (Styrer sammen med foregående kolonne, hvilke dokumenter der sendes til ansøger.)
             </li>
             <li>
-                Kolonnen ”Begrundelse hvis nej eller delvis”: Marker for de dokumenter, som ikke skal udleveres, hvilken type af undtagelse du bruger.
-                <div style="margin-left: 2em;">
-                (Styrer, hvilke begrundelsesfraser der indsættes i afgørelsen.)
-                </div>
+                Kolonnen ”Begrundelse hvis nej eller delvis”: Marker for de dokumenter, som ikke skal udleveres, hvilken type af undtagelse du bruger. (Styrer, hvilke begrundelsesfraser der indsættes i afgørelsen.)
             </li>
             </ul>
             <p>
