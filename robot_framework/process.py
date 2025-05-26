@@ -694,13 +694,42 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     body = f"""
     <html>
         <body>
-            <p>Sag: {SagsID}. </p>
-            <p>Der er valgt 'Ja' ud fra alle dokumenter i kolonnen 'Omfattet af ansøgning', her skal du vælge nej hvis de ikke er omfattet. Hvis de er omfattet skal du herefter vælge om der gives aktindsigt i dokumentet, og vælge en begrundelse hvis du har valgt nej/delvis. Herefter kan du i Podio sætte screeningen af de valgte filer i gang.</p>
-            <p>{memodata_obs}</p>
+            <p>Sag: {DeskProID}. </p>
+            <p>Der er bedt om aktindsigt i sag {SagsID}. Der er dannet en dokumentliste for sagen.</p>
             <a href="{link_url}">Link til dokumentlisten</a>
-            <br><br>
-            <p>Excel filen er låst således at du kun kan ændre på de sidste 3 kolonner, og robotten tager kun de filer med hvor der står 'Ja' eller 'Delvis' i 'Gives der aktindsigt i dokumentet? (Ja/Nej/Delvis)' kolonnen.</p>
+
+            <p>{memodata_obs}</p>
             <p>{nuldokument_obs}</p>
+
+            <ul>
+            <li>
+                Kolonnen ”Omfattet af ansøgning”: 
+                Dokumentlisten omfatter alle dokumenterne på sagen. Marker med ”nej”, hvis der er dokumenter, der ikke er omfattet af ansøgningen.
+                <div style="margin-left: 2em;">
+                (Styrer sammen med næste kolonne, hvilke dokumenter der sendes til ansøger.)
+                </div>
+            </li>
+            <li>
+                Kolonnen ”Gives der aktindsigt i dokumentet?”: Marker for de dokumenter, der er omfattet af ansøgningen, om de skal udleveres.
+                <div style="margin-left: 2em;">
+                (Styrer sammen med foregående kolonne, hvilke dokumenter der sendes til ansøger.)
+                </div>
+            </li>
+            <li>
+                Kolonnen ”Begrundelse hvis nej eller delvis”: Marker for de dokumenter, som ikke skal udleveres, hvilken type af undtagelse du bruger.
+                <div style="margin-left: 2em;">
+                (Styrer, hvilke begrundelsesfraser der indsættes i afgørelsen.)
+                </div>
+            </li>
+            </ul>
+            <p>
+            Markeringer i dokumentlisten kan ændres efterfølgende, hvis det er nødvendigt, så længe aktindsigten ikke er sendt.
+            </p>
+            <p>Er du i tvivl, om noget kan undtages, kan du finde hjælp her: <a href= "https://aktindsigtshaandbogen.dk/aktindsigt-trin-for-trin/?KeyListPageQuery=5404" target="_blank">Guide til undtagelser</a> under "Undtagelser fra aktindsigt" </p>
+            <p>De øvrige kolonner kan ikke redigeres. Er der fortrolige oplysninger i selve aktlisten, skal disse overstreges på anden vis, inden aktindsigten sendes. </p>
+            <p>Når dokumentlisten er gennemgået, kan screeningen af de valgte filer sættes i gang i dokumentstyringssystemet (Podio). </p>
+            
+            <br><br>
             <p> Vejledning findes på <a href="https://aarhuskommune.atlassian.net/wiki/spaces/AB/pages/64979049/AKTBOB+--+Vejledning" target="_blank">AKTBOB – Vejledning</a> </p>
             
 
