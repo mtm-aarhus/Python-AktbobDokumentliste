@@ -274,9 +274,30 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 ViewId = item["ViewId"]
                 break
             elif item["ViewName"] == "Ikkejournaliseret.aspx":
-                ikke_journaliseret_id = item["ViewId"]
+                ikke_journaliseret_id = item["ViewId"]    
+                if ikke_journaliseret_id is None: 
+                    print('None detecteret')
+                    LinkURL = item["LinkUrl"]
+                    reponse = session.get(f'{GOAPI_URL}{LinkURL}')
+                                    
+                    # Find _spPageContextInfo JavaScript-objektet
+                    match = re.search(r'_spPageContextInfo\s*=\s*({.*?});', reponse.text, re.DOTALL)
+                    if not match:
+                        raise ValueError("Kunne ikke finde _spPageContextInfo i HTML")
+                    context_info = json.loads(match.group(1))
+                    view_id = context_info.get("viewId", "").strip("{}")
+                    ikke_journaliseret_id = view_id
             elif item["ViewName"] == "Journaliseret.aspx":
                 journaliseret_id = item["ViewId"]
+                if journaliseret_id is None:
+                    LinkURL = item["LinkUrl"]
+                    reponse = session.get(f'{GOAPI_URL}{LinkURL}')
+                    match = re.search(r'_spPageContextInfo\s*=\s*({.*?});', reponse.text, re.DOTALL)
+                    if not match:
+                        raise ValueError("Kunne ikke finde _spPageContextInfo i HTML")
+                    context_info = json.loads(match.group(1))
+                    view_id = context_info.get("viewId", "").strip("{}")
+                    journaliseret_id = view_id
 
         # If "UdenMapper.aspx" doesn't exist, combine views
         if ViewId is None:
