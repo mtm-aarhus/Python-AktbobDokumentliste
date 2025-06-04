@@ -325,6 +325,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     AktID = item.get("CaseRecordNumber", "").replace(".", "")
                     DokumentDato = str(item.get("Dato"))
                     Dokumenttitel = item.get("Title", "")
+                    orchestrator_connection.log_info(f'Dokumenttitel {Dokumenttitel}')
                     DokID = str(item.get("DocID"))
                     orchestrator_connection.log_info(f'Dok id er {DokID}')
                     DokumentKategori = str(item.get("Korrespondance"))
