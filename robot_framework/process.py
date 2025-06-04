@@ -314,7 +314,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
                 # If not the first run, fetch the next page
                 if not firstrun:
-                    orchestrator_connection.log_info("Henter næste side i dokumentet")
                     url = f"{GOAPI_URL}/{SagsURL}/_api/web/GetList(@listUrl)/RenderListDataAsStream"
                     url_with_query = f"{url}?@listUrl={ListURL}{NextHref.replace('?', '&')}"
 
@@ -346,9 +345,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     AktID = item.get("CaseRecordNumber", "").replace(".", "")
                     DokumentDato = str(item.get("Dato"))
                     Dokumenttitel = item.get("Title", "")
-                    orchestrator_connection.log_info(f'Dokumenttitel {Dokumenttitel}')
                     DokID = str(item.get("DocID"))
-                    orchestrator_connection.log_info(f'Dok id er {DokID}')
                     DokumentKategori = str(item.get("Korrespondance"))
 
                     if len(Dokumenttitel) < 2:
