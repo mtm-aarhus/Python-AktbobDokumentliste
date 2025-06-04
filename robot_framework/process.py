@@ -326,6 +326,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     DokumentDato = str(item.get("Dato"))
                     Dokumenttitel = item.get("Title", "")
                     DokID = str(item.get("DocID"))
+                    orchestrator_connection.log_info(DokID)
                     DokumentKategori = str(item.get("Korrespondance"))
 
                     if len(Dokumenttitel) < 2:
@@ -694,7 +695,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     body = f"""
     <html>
         <body>
-            <p>Sag: {DeskProID}. </p>
+            <p>Sag: {DeskProID} - {DeskProTitel}. </p>
             <p>Der er bedt om aktindsigt i sag {SagsID}. Der er dannet en dokumentliste for sagen.</p>
             <a href="{link_url}">Link til dokumentlisten</a>
 
@@ -722,6 +723,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             
             <br><br>
             <p> Vejledning findes på <a href="https://aarhuskommune.atlassian.net/wiki/spaces/AB/pages/64979049/AKTBOB+--+Vejledning" target="_blank">AKTBOB – Vejledning</a> </p>
+            <p> Link til sagsstyringssystemet <a href="https://mtmsager.aarhuskommune.dk/app#/t/ticket/{DeskProID}" target="_blank">Sagsstyringssystem</a> </p>
             
 
         </body>
