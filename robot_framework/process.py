@@ -326,7 +326,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     DokumentDato = str(item.get("Dato"))
                     Dokumenttitel = item.get("Title", "")
                     DokID = str(item.get("DocID"))
-                    orchestrator_connection.log_info(DokID)
+                    orchestrator_connection.log_info(f'Dok id er {DokID}')
                     DokumentKategori = str(item.get("Korrespondance"))
 
                     if len(Dokumenttitel) < 2:
