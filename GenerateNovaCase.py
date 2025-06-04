@@ -588,7 +588,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 "uuid": CaseUuid  
             },
             "caseAttributes": {
-                "title": f"Test gustav - Anmodning om aktindsigt i {Sagsnummer}", # skal ændres til "Anmodning om aktindsigt i...."
+                "title": f"Anmodning om aktindsigt i {Sagsnummer}", # skal ændres til "Anmodning om aktindsigt i...."
                 "caseDate": AktindsigtsDato,
                 "caseCategory": "BomByg"
             },
