@@ -321,7 +321,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 "numberOfRows": 100
             },
             "caseAttributes": {
-                "title": f"Test gustav - Anmodning om aktindsigt i {old_case_number}", # skal ændres til "Anmodning om aktindsigt i...."
+                "title": f"Anmodning om aktindsigt i {old_case_number}", # skal ændres til "Anmodning om aktindsigt i...."
                 "fromCaseDate": AktindsigtsDato_midnight,
                 "toCaseDate": new_date_str
 
@@ -364,7 +364,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                         "numberOfRows": 100
                     },
                     "caseAttributes": {
-                        "title": f"Test gustav - Anmodning om aktindsigt i {OldCaseAdress}", # skal ændres til "Anmodning om aktindsigt i...."
+                        "title": f"Anmodning om aktindsigt i {OldCaseAdress}", # skal ændres til "Anmodning om aktindsigt i...."
                         "fromCaseDate": AktindsigtsDato_midnight,
                         "toCaseDate": new_date_str
 
@@ -428,7 +428,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             "numberOfRows": 100
         },
         "caseAttributes": {
-            "title": f"Test gustav - Anmodning om aktindsigt i {OldCaseAdress}", # skal ændres til "Anmodning om aktindsigt i...."
+            "title": f"Anmodning om aktindsigt i {OldCaseAdress}", # skal ændres til "Anmodning om aktindsigt i...."
             "caseDate": AktindsigtsDato, 
             "caseCategory": "BomByg"
         }
@@ -483,7 +483,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 "uuid": CaseUuid  
             },
             "caseAttributes": {
-                "title": f"Test gustav - Anmodning om aktindsigt i {Sagsnummer}", # skal ændres til "Anmodning om aktindsigt i...."
+                "title": f"Anmodning om aktindsigt i {Sagsnummer}", # skal ændres til "Anmodning om aktindsigt i...."
                 "caseDate": AktindsigtsDato,
                 "caseCategory": "BomByg"
             },
