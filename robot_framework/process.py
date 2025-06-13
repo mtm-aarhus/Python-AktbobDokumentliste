@@ -844,8 +844,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         print(f"PUT request failed: {put_response.status_code}, {put_response.text}")
 
     # Debugging: Print URLs and Headers
-    get_ticket_url = f"{API_username}/Database/Tickets?deskproId={quote(DeskProID)}"
-    get_case_url = f"{API_username}/Database/Cases?podioItemId={quote(PodioID)}"
+    get_ticket_url = f"{API_username}/tickets?deskproId={quote(DeskProID)}"
+    get_case_url = f"{API_username}/cases?podioItemId={quote(PodioID)}"
 
     # 2. GET Request to Fetch Ticket ID based on DeskProId
     get_ticket_response = requests.get(get_ticket_url, headers=headers, json={})  # Added json={}
@@ -853,7 +853,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     ticket_data = get_ticket_response.json()
     ticket_id = ticket_data[0]['id']
-    patch_ticket_url = f"{API_username}/Database/Tickets/{ticket_id}"
+    patch_ticket_url = f"{API_username}/tickets/{ticket_id}"
     patch_ticket_body = {"sharepointFolderName": Mappe1}
     patch_ticket_response = requests.patch(patch_ticket_url, headers=headers, json=patch_ticket_body)
     patch_ticket_response.raise_for_status()
@@ -864,7 +864,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     case_data = get_case_response.json()
     case_id = case_data[0]['id']
                 
-    patch_case_url = f"{API_username}/Database/Cases/{case_id}"
+    patch_case_url = f"{API_username}/cases/{case_id}"
     patch_case_body = {"sharepointFolderName": Mappe2}
     patch_case_response = requests.patch(patch_case_url, headers=headers, json=patch_case_body)
     patch_case_response.raise_for_status()
