@@ -273,7 +273,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             if item["ViewName"] == "UdenMapper.aspx":
                 ViewId = item["ViewId"]
                 break
-            elif item["ViewName"] == "Ikkejournaliseret.aspx":
+            elif item["ViewName"].lower() == "ikkejournaliseret.aspx":
                 ikke_journaliseret_id = item["ViewId"]    
                 if ikke_journaliseret_id is None: 
                     print('None detecteret')
