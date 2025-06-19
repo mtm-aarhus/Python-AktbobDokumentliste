@@ -9,10 +9,10 @@ FAIL_ROBOT_ON_TOO_MANY_ERRORS = False
 # Error screenshot config
 SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
 SMTP_PORT = 25
-SCREENSHOT_SENDER = "robot@aarhus.dk"
+SCREENSHOT_SENDER = "dokumentliste@aarhus.dk"
 
 # Constant/Credential names
-ERROR_EMAIL = "balas"
+ERROR_EMAIL = "Error Email"
 
 
 # Queue specific configs
