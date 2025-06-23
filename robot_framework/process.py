@@ -193,9 +193,10 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         else:
             print("Error: 'Metadata' field is missing in the JSON response.")
     if NovaSag:
+        NewGuID = str(uuid.uuid4())
         payload = json.dumps({
         "common": {
-            "transactionId": "6630880c-e5e9-4b9f-b348-884af571a69b"
+            "transactionId": NewGuID
         },
         "paging": {
             "startRow": 1,

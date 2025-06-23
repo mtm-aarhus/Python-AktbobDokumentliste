@@ -689,6 +689,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             else:
                 print("Failed to send request. Status Code:", response.status_code)
                 print("Response Data:", response.text)  # Print error response
+                raise Exception
         except Exception as e:
             raise Exception("Failed to fetch Sagstitel (Nova):", str(e))
         
