@@ -876,7 +876,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if os.path.exists(excel_file_path):
         os.remove(excel_file_path)
 
-    def try_register_case():
+    def try_register_case(deskpro_id):
         """
         Tries to acquire a lock by inserting a unique row.
         Returns True if lock acquired, False if another process holds it.
@@ -892,7 +892,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 WHERE CreatedAt < DATEADD(MINUTE, -3, GETUTCDATE())
                 """
             )
- 
+
             try:
                 # Try inserting our lock row
                 cursor.execute(
@@ -901,16 +901,16 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     VALUES (?, ?, ?)
                     """,
                     'GLOBAL_LOCK',      # The fixed lock key
-                    'ProcessX',         # Optional: could be deskpro_id or process name
+                    deskpro_id,         #
                     now
                 )
                 conn.commit()
                 return True
- 
+
             except pyodbc.IntegrityError:
                 # Another process already holds the lock
                 return False
- 
+
         finally:
             cursor.close()
             conn.close()
