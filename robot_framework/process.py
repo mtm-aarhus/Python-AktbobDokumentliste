@@ -885,11 +885,11 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         conn = pyodbc.connect("DRIVER={ODBC Driver 17 for SQL Server};SERVER=srvsql29;DATABASE=PyOrchestrator;Trusted_Connection=yes")
         cursor = conn.cursor()
         try:
-            # Clean up old lock older than 3 minutes
+            # Clean up old lock older than 1 minutes
             cursor.execute(
                 """
                 DELETE FROM dbo.NovaCaseRegistry
-                WHERE CreatedAt < DATEADD(MINUTE, -3, GETUTCDATE())
+                WHERE CreatedAt < DATEADD(MINUTE, -1, GETUTCDATE())
                 """
             )
 
