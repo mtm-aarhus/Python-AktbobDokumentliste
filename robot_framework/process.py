@@ -870,55 +870,62 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     patch_case_url = f"{API_username}/cases/{case_id}"
     patch_case_body = {"sharepointFolderName": Mappe2}
     patch_case_response = requests.patch(patch_case_url, headers=headers, json=patch_case_body)
+
     patch_case_response.raise_for_status()
-
-# --- Lock coordination functions ---
-    def try_register_case(deskpro_id):
-        now = datetime.utcnow()
-        three_minutes_ago = now - timedelta(minutes=5)
-
-        conn = pyodbc.connect("DRIVER={ODBC Driver 17 for SQL Server};SERVER=srvsql29;DATABASE=PyOrchestrator;Trusted_Connection=yes")
-        cursor = conn.cursor()
-
-        try:
-            # Try to insert if no recent lock exists
-            cursor.execute("""
-                IF NOT EXISTS (
-                    SELECT 1 FROM dbo.NovaCaseRegistry WHERE CreatedAt > ?
-                )
-                BEGIN
-                    DELETE FROM dbo.NovaCaseRegistry;
-                    INSERT INTO dbo.NovaCaseRegistry (DeskProID, CreatedAt)
-                    VALUES (?, ?);
-                END
-            """, three_minutes_ago, deskpro_id, now)
-            conn.commit()
-            # Check if insert occurred
-
-            cursor.execute("SELECT TOP 1 DeskProID, CreatedAt FROM dbo.NovaCaseRegistry")
-            row = cursor.fetchone()
-            return row and row.DeskProID == deskpro_id
-
-        finally:
-            cursor.close()
-            conn.close()
-
-    def register_case_with_retry(deskpro_id, max_retries=10, delay_seconds=30):
-        for attempt in range(1, max_retries + 1):
-            if try_register_case(deskpro_id):
-                print(f"[Attempt {attempt}] Lock acquired — proceeding with case logic.")
-                return True
-            else:
-                print(f"[Attempt {attempt}] Lock not acquired, retrying in {delay_seconds} seconds...")
-                time.sleep(delay_seconds)
-        print("Max retries reached — aborting case creation.")
-        return False
+    
     if os.path.exists(excel_file_path):
         os.remove(excel_file_path)
-        
-    if NovaSag and register_case_with_retry(DeskProID):
-        KMD_access_token = GetKmdAcessToken.GetKMDToken(orchestrator_connection=orchestrator_connection)
+    if NovaSag:
+        KMD_access_token = GetKmdAcessToken.GetKMDToken(orchestrator_connection= orchestrator_connection)
         GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= AktSagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, AktindsigtsDato = AktindsigtsDato, orchestrator_connection= orchestrator_connection, DeskProID = DeskProID)
-    elif NovaSag:
-        orchestrator_connection.log_info("Skipping Nova case generation — already in progress or created by another process.")
+
+# # --- Lock coordination functions ---
+#     def try_register_case(deskpro_id):
+#         now = datetime.utcnow()
+#         three_minutes_ago = now - timedelta(minutes=5)
+
+#         conn = pyodbc.connect("DRIVER={ODBC Driver 17 for SQL Server};SERVER=srvsql29;DATABASE=PyOrchestrator;Trusted_Connection=yes")
+#         cursor = conn.cursor()
+
+#         try:
+#             # Try to insert if no recent lock exists
+#             cursor.execute("""
+#                 IF NOT EXISTS (
+#                     SELECT 1 FROM dbo.NovaCaseRegistry WHERE CreatedAt > ?
+#                 )
+#                 BEGIN
+#                     DELETE FROM dbo.NovaCaseRegistry;
+#                     INSERT INTO dbo.NovaCaseRegistry (DeskProID, CreatedAt)
+#                     VALUES (?, ?);
+#                 END
+#             """, three_minutes_ago, deskpro_id, now)
+#             conn.commit()
+#             # Check if insert occurred
+
+#             cursor.execute("SELECT TOP 1 DeskProID, CreatedAt FROM dbo.NovaCaseRegistry")
+#             row = cursor.fetchone()
+#             return row and row.DeskProID == deskpro_id
+
+#         finally:
+#             cursor.close()
+#             conn.close()
+
+#     def register_case_with_retry(deskpro_id, max_retries=10, delay_seconds=30):
+#         for attempt in range(1, max_retries + 1):
+#             if try_register_case(deskpro_id):
+#                 print(f"[Attempt {attempt}] Lock acquired — proceeding with case logic.")
+#                 return True
+#             else:
+#                 print(f"[Attempt {attempt}] Lock not acquired, retrying in {delay_seconds} seconds...")
+#                 time.sleep(delay_seconds)
+#         print("Max retries reached — aborting case creation.")
+#         return False
+#     if os.path.exists(excel_file_path):
+#         os.remove(excel_file_path)
+
+#     if NovaSag and register_case_with_retry(DeskProID):
+#         KMD_access_token = GetKmdAcessToken.GetKMDToken(orchestrator_connection=orchestrator_connection)
+#         GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= AktSagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, AktindsigtsDato = AktindsigtsDato, orchestrator_connection= orchestrator_connection, DeskProID = DeskProID)
+#     elif NovaSag:
+#         orchestrator_connection.log_info("Skipping Nova case generation — already in progress or created by another process.")
 
