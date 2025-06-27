@@ -876,37 +876,39 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if os.path.exists(excel_file_path):
         os.remove(excel_file_path)
 
-# --- Lock coordination functions ---
-    def try_register_case(deskpro_id):
+    def try_register_case():
+        """
+        Tries to acquire a lock by inserting a unique row.
+        Returns True if lock acquired, False if another process holds it.
+        """
         now = datetime.utcnow()
-        three_minutes_ago = now - timedelta(minutes=3)
- 
         conn = pyodbc.connect("DRIVER={ODBC Driver 17 for SQL Server};SERVER=srvsql29;DATABASE=PyOrchestrator;Trusted_Connection=yes")
         cursor = conn.cursor()
         try:
-            # 1. Check if any recent lock exists
+            # Clean up old lock older than 3 minutes
             cursor.execute(
-                "SELECT COUNT(*) FROM dbo.NovaCaseRegistry WHERE CreatedAt > ?",
-                three_minutes_ago
+                """
+                DELETE FROM dbo.NovaCaseRegistry
+                WHERE CreatedAt < DATEADD(MINUTE, -3, GETUTCDATE())
+                """
             )
-            count = cursor.fetchone()[0]
  
-            if count == 0:
-                # 2. No recent lock: clear any old rows
-                cursor.execute("DELETE FROM dbo.NovaCaseRegistry")
- 
-                # 3. Insert our lock
+            try:
+                # Try inserting our lock row
                 cursor.execute(
-                    "INSERT INTO dbo.NovaCaseRegistry (DeskProID, CreatedAt) VALUES (?, ?)",
-                    deskpro_id,
+                    """
+                    INSERT INTO dbo.NovaCaseRegistry (LockKey, DeskProID, CreatedAt)
+                    VALUES (?, ?, ?)
+                    """,
+                    'GLOBAL_LOCK',      # The fixed lock key
+                    'ProcessX',         # Optional: could be deskpro_id or process name
                     now
                 )
- 
                 conn.commit()
                 return True
  
-            else:
-                # Recent lock exists
+            except pyodbc.IntegrityError:
+                # Another process already holds the lock
                 return False
  
         finally:
