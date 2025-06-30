@@ -1,61 +1,62 @@
-# Robot-Framework V3
+# Dokumentlistegenerator & Nova-sagsopretter – Procesbeskrivelse
 
-This repo is meant to be used as a template for robots made for [OpenOrchestrator](https://github.com/itk-dev-rpa/OpenOrchestrator).
+Denne robot genererer en dokumentliste over sagens dokumenter (GEO eller Nova), uploader den til SharePoint, sender notifikation til sagsbehandler og opretter/ajourfører en tilknyttet sag i KMD Nova, hvis det er en Nova-sag.
 
-## Quick start
+---
 
-1. To use this template simply use this repo as a template (see [Creating a repository from a template](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)).
-__Don't__ include all branches.
+## Procestrin
 
-2. Go to `robot_framework/__main__.py` and choose between the linear framework or queue based framework.
+### 1. Identificér sagens type
+- Hvis `SagsNummer` matcher Geo-format (`ABC-XXXX-XXXXXX`), håndteres den som GEO-sag.
+- Ellers behandles den som Nova-sag og kræver token til KMD Nova.
 
-3. Implement all functions in the files:
-    * `robot_framework/initialize.py`
-    * `robot_framework/reset.py`
-    * `robot_framework/process.py`
+### 2. Hent dokumentdata
+- **GEO**: Via SharePoint/GOAPI hentes dokumentmetadata, inkl. over- og underbilag.
+- **Nova**: Via Nova API (`Document/GetList`) hentes relevante dokumenter.
+- Dokumenter som indeholder `"tunnel_marking"`, `"memometadata"` eller `"fletteliste"` markeres automatisk som *“Nej”* med standardbegrundelse.
 
-4. Change `config.py` to your needs.
+### 3. Generér Excel-arbejdsark
+- Dokumentmetadata lægges i en tabel i Excel.
+- Robotten formaterer filen med:
+  - Wrapped tekst, kolonnebredder og rækkehøjde
+  - Drop-downs i kolonnerne *Omfattet*, *Gives der aktindsigt*, *Begrundelse*
+  - Skjult ark med standardbegrundelser
+  - Beskyttelse af celler (kun relevante kolonner er redigerbare)
+  - Hyperlinks i dokumentlink-kolonnen
 
-5. Fill out the dependencies in the `pyproject.toml` file with all packages needed by the robot.
+### 4. Opret mapper og upload til SharePoint
+- Mapper navngives ud fra `{DeskProID} - {Titel}` → `{Sagsnummer} - {SagsTitel}`
+- Mapperne oprettes i `Delte dokumenter/Dokumentlister`
+- Excel-filen uploades til undermappen
+- Delingslink (OrganisationEdit) genereres og kontrolleres
 
-6. Feel free to add more files as needed. Remember that any additional python files must
-be located in the folder `robot_framework` or a subfolder of it.
+### 5. Send notifikation via e-mail
+- Mail sendes til `Email` i køelementet med:
+  - Link til dokumentlisten
+  - Vejledning i kolonneudfyldning
+  - Advarsel hvis sagen indeholder tunnel/memo/flette-dokumenter
+- Ved tom sag sendes særskilt notifikation
 
-When the robot is run from OpenOrchestrator the `main.py` file is run which results
-in the following:
-1. The working directory is changed to where `main.py` is located.
-2. A virtual environment is automatically setup with the required packages.
-3. The framework is called passing on all arguments needed by [OpenOrchestrator](https://github.com/itk-dev-rpa/OpenOrchestrator).
+### 6. Opret sag i Nova (kun hvis NovaSag = True)
+- Robotten tjekker DeskPro-felter for gamle sagsnumre.
+- Matcher BFE-nummer og dato → opdater eksisterende sag.
+- Ellers:
+  - Robotten opretter ny Nova-sag via `Case/Import`
+  - Journalnotat tilføjes med link til oprindelig sag
+  - Metadata såsom ejendomsoplysninger, parter og sagstype tilføjes
 
-## Requirements
-Minimum python version 3.10
+### 7. Opdater metadata i Podio og DeskPro
+- SharePoint-foldernavn opdateres i:
+  - `tickets/{ticket_id}` i DeskPro
+  - `cases/{case_id}` i Podio
+- Link til dokumentlisten tilføjes i Podio-felt
 
-## Flow
+### 8. Ryd op og fjern lokalt Excel-ark
+- Excel-filen slettes efter upload og deling.
 
-This framework contains two different flows: A linear and a queue based.
-You should only ever use one at a time. You choose which one by going into `robot_framework/__main__.py`
-and uncommenting the framework you want. They are both disabled by default and an error will be
-raised to remind you if you don't choose.
+### 9. Undgå dubletter via SQL-lås
+- Robotten forsøger at indsætte en *global lock* i SQL.
+- Hvis en anden robot allerede har startet en Nova-sagsoprettelse for samme sag, springes dette trin over.
 
-### Linear Flow
-
-The linear framework is used when a robot is just going from A to Z without fetching jobs from an
-OpenOrchestrator queue.
-The flow of the linear framework is sketched up in the following illustration:
-
-![Linear Flow diagram](Robot-Framework.svg)
-
-### Queue Flow
-
-The queue framework is used when the robot is doing multiple bite-sized tasks defined in an
-OpenOrchestrator queue.
-The flow of the queue framework is sketched up in the following illustration:
-
-![Queue Flow diagram](Robot-Queue-Framework.svg)
-
-## Linting and Github Actions
-
-This template is also setup with flake8 and pylint linting in Github Actions.
-This workflow will trigger whenever you push your code to Github.
-The workflow is defined under `.github/workflows/Linting.yml`.
+---
 
