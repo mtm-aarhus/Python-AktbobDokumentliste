@@ -692,8 +692,112 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 raise Exception
         except Exception as e:
             raise Exception("Failed to fetch Sagstitel (Nova):", str(e))
-        
 
+        # Henter liste over opgaver: 
+        task_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")   # dags dato sættes      
+        Caseurl = f"{KMDNovaURL}/Task/GetList?api-version=2.0-Case"
+        TransactionID = str(uuid.uuid4())
+        # Define headers
+        headers = {
+            "Authorization": f"Bearer {KMD_access_token}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+        "common": {
+        "transactionId": TransactionID
+        },
+        "paging": {
+        "startRow": 1,
+        "numberOfRows": 3000
+        },
+        "caseUuid": CaseUuid, 
+        "taskDescription": True
+        }
+        try:
+            response = requests.put(Caseurl, headers=headers, json=data)
+
+            if response.status_code == 200:
+                print("API call successful. Parsing task list...")
+                
+                klar_til_sagsbehandling_uuid = None
+                afslut_sagen_uuid = None
+                tidsreg_sagsbehandling_uuid = None
+
+                task_list = response.json().get("taskList", [])
+
+                for task in task_list:
+                    title = task.get("taskTitle")
+                    task_uuid = task.get("taskUuid")
+
+                    if title == "05. Klar til sagsbehandling":
+                        klar_til_sagsbehandling_uuid = task_uuid
+                    elif title == "25. Afslut/henlæg sagen":
+                        afslut_sagen_uuid = task_uuid
+                    elif title == "11. Tidsreg: Sagsbehandling":
+                        tidsreg_sagsbehandling_uuid = task_uuid
+
+                # Create a list of tuples with task names and their UUIDs
+                task_uuids = [
+                    ("05. Klar til sagsbehandling", klar_til_sagsbehandling_uuid),
+                    ("25. Afslut/henlæg sagen", afslut_sagen_uuid),
+                    ("11. Tidsreg: Sagsbehandling", tidsreg_sagsbehandling_uuid),
+                ]
+
+                print("\nFinal result:")
+                for task_name, task_uuid in task_uuids:
+                    if task_uuid:
+                        print(f"UUID for '{task_name}': {task_uuid}")
+                    else:
+                        print(f"Missing UUID for task: '{task_name}'")
+            else:
+                print(f"Failed to fetch task data. Status code: {response.status_code}")
+                print(response.text)
+                raise Exception("Failed to fetch task data.")
+
+        except Exception as e:
+            print("Exception occurred:", str(e))
+
+            # -- Opdaterer Task listen --- #
+            
+        for task_name,task_uuid in task_uuids:
+            Caseurl = f"{KMDNovaURL}/Task/Update?api-version=2.0-Case"
+            TransactionID = str(uuid.uuid4())
+            # Define headers
+            headers = {
+            "Authorization": f"Bearer {KMD_access_token}",
+            "Content-Type": "application/json"
+            }
+
+            task_data= {
+            "common": {
+                "transactionId": TransactionID
+            },
+            "uuid": task_uuid, 
+            "caseUuid": CaseUuid,
+            "title": task_name, 
+            "caseworker": { 
+                "kspIdentity": {
+                    "novaUserId": "78897bfc-2a36-496d-bc76-07e7a6b0850e",
+                    "racfId": "AZX0075",
+                    "fullName": "Aktindsigter Novabyg"
+                }
+            },
+            "startDate": task_date,
+            "statusCode": "S",
+            "taskType": "Aktivitet" 
+            }
+            
+            try:
+                response = requests.put(Caseurl, headers=headers, json=task_data)
+                if response.status_code == 200:
+                    print(f"{task_name} er igangsat")
+                else: 
+                    print(response.status_code)
+                    print(response.text)
+            except Exception as e:
+                raise Exception("Failed to update task:", str(e))
+            
         orchestrator_connection.log_info(f"Sender følgende CaseUuid videre: {CaseUuid}")
         #Logger til database:
         store_case_uuid(DeskProID, CaseUuid)
