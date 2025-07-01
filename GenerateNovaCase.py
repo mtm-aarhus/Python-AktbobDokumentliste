@@ -775,7 +775,8 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             },
             "uuid": task_uuid, 
             "caseUuid": CaseUuid,
-            "title": task_name, 
+            "title": task_name,
+            "description": DeskProID, 
             "caseworker": { 
                 "kspIdentity": {
                     "novaUserId": "78897bfc-2a36-496d-bc76-07e7a6b0850e",
