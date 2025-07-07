@@ -344,7 +344,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 # Process each row
                 for item in dokumentliste_rows:
                     # Extract and prepare data
-                    DokumentURL = GOAPI_URL + quote(item.get("FileRef", ""), safe="/")
+                    DokumentURL = GOAPI_URL.replace("ad.", "") + quote(item.get("FileRef", ""), safe="/")
                     AktID = item.get("CaseRecordNumber", "").replace(".", "")
                     DokumentDato = str(item.get("Dato"))
                     Dokumenttitel = item.get("Title", "")
