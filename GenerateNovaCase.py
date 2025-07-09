@@ -33,6 +33,16 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
         cursor.close()
         conn.close()
     
+    def find_valid_case(response_data):
+        if response_data.get("pagingInformation", {}).get("numberOfRows", 0) > 0:
+            for case in response_data.get("cases", []):
+                udf_fields = case.get("buildingCase", {}).get("userdefindefields", [])
+                if not any(field.get("value") == "Juridisk" for field in udf_fields):
+                    return case  # First valid case
+        return None
+
+
+
      ### --- Henter caseinfo --- ###
     TransactionID = str(uuid.uuid4())
 
@@ -298,7 +308,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             date_obj_midnight = date_obj.replace(hour=0, minute=0, second=0, microsecond=0)
             AktindsigtsDato_midnight = date_obj_midnight.strftime("%Y-%m-%dT%H:%M:%S")
             # tilføjer én dag for at tjekke om der er oprettet nogen sager i det tidsinterval
-            new_date_obj = date_obj_midnight + timedelta(days=1)
+            new_date_obj = date_obj_midnight + timedelta(days=7)
 
             # Convert new_date_obj back to string
             new_date_str = new_date_obj.strftime("%Y-%m-%dT%H:%M:%S")
@@ -326,6 +336,11 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 "toCaseDate": new_date_str
 
             },
+              "caseParty":{
+                    "partyRole": "IND",
+                    "name": IndsenderNavn
+            },
+
             "states":{
                 "states":[{
                     "progressState":"Opstaaet"
@@ -338,9 +353,13 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             "buildingCase": {
                 "propertyInformation":{
                     "caseAddress":True
-                            }
-                        }   
-            }
+                            },
+            "userdefindefields": {
+                "type": True,
+                "value": True
+                        }
+                    }   
+                }
             }
             # Make the request
             response = requests.put(Caseurl, headers=headers, json=data)
@@ -348,10 +367,11 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             # Check status and handle response
             if response.status_code == 200:
                 response_data = response.json()
-                if response_data.get("pagingInformation", {}).get("numberOfRows", 0) > 0:
-                    case = response_data["cases"][0]
-                    OldCaseUuid = case["common"]["uuid"]
-                    OldCaseAdress = case["buildingCase"]["propertyInformation"]["caseAddress"]
+                valid_case = find_valid_case(response_data)
+                
+                if valid_case:
+                    OldCaseUuid = valid_case["common"]["uuid"]
+                    OldCaseAdress = valid_case["buildingCase"]["propertyInformation"]["caseAddress"]
                     NovaCaseExists = True
                 else:
                     print("Tjekker om sagen er opdateret i forvejen")
@@ -364,10 +384,14 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                         "numberOfRows": 100
                     },
                     "caseAttributes": {
-                        "title": f"Anmodning om aktindsigt i {OldCaseAdress}", # skal ændres til "Anmodning om aktindsigt i...."
+                        "title": f"Anmodning om aktindsigt i {OldCaseAdress}", 
                         "fromCaseDate": AktindsigtsDato_midnight,
                         "toCaseDate": new_date_str
 
+                    },
+                    "caseParty":{
+                        "partyRole": "IND",
+                        "name": IndsenderNavn
                     },
                     "states":{
                         "states":[{
@@ -381,22 +405,28 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     "buildingCase": {
                         "propertyInformation":{
                             "caseAddress":True
+                                    },
+                    "userdefindefields": {
+                            "type": True,
+                            "value": True
                                     }
                                 }   
-                    }
-                    }
+                        }
+                    }  
+                
                     # Make the request
                     response = requests.put(Caseurl, headers=headers, json=data)
 
                     if response.status_code == 200:
                         response_data = response.json()
-                        if response_data.get("pagingInformation", {}).get("numberOfRows", 0) > 0:
-                            case = response_data["cases"][0]
-                            OldCaseUuid = case["common"]["uuid"]
-                            OldCaseAdress = case["buildingCase"]["propertyInformation"]["caseAddress"]
+                        valid_case = find_valid_case(response_data)
+                        if valid_case:
+                            OldCaseUuid = valid_case["common"]["uuid"]
+                            OldCaseAdress = valid_case["buildingCase"]["propertyInformation"]["caseAddress"]
                             NovaCaseExists = True
                         else:
                             NovaCaseExists = False
+                    
             else:
                 raise Exception(f"API request failed with status {response.status_code}: {response.text}")
                         
