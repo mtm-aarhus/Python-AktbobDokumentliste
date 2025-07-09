@@ -876,57 +876,67 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if os.path.exists(excel_file_path):
         os.remove(excel_file_path)
 
-    def try_register_case(deskpro_id):
+    def try_register_case(deskpro_id, lock_expiry_minutes=3):
         """
-        Tries to acquire a lock by inserting a unique row.
-        Returns True if lock acquired, False if another process holds it.
+        Attempts to acquire a lock for the given DeskProID by inserting a row.
+        Returns True if lock acquired, False if already held by another process.
         """
         now = datetime.utcnow()
-        conn = pyodbc.connect("DRIVER={ODBC Driver 17 for SQL Server};SERVER=srvsql29;DATABASE=PyOrchestrator;Trusted_Connection=yes")
+        conn = pyodbc.connect(
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            "SERVER=srvsql29;"
+            "DATABASE=PyOrchestrator;"
+            "Trusted_Connection=yes"
+        )
         cursor = conn.cursor()
         try:
-            # Clean up old lock older than 1 minutes
+            # Clean up old locks older than N minutes
             cursor.execute(
                 """
                 DELETE FROM dbo.NovaCaseRegistry
-                WHERE CreatedAt < DATEADD(MINUTE, -1, GETUTCDATE())
-                """
+                WHERE CreatedAt < DATEADD(MINUTE, -?, GETUTCDATE())
+                """,
+                lock_expiry_minutes
             )
 
             try:
-                # Try inserting our lock row
+                # Try to insert a lock row for this DeskProID
                 cursor.execute(
                     """
-                    INSERT INTO dbo.NovaCaseRegistry (LockKey, DeskProID, CreatedAt)
-                    VALUES (?, ?, ?)
+                    INSERT INTO dbo.NovaCaseRegistry (DeskProID, CreatedAt)
+                    VALUES (?, ?)
                     """,
-                    'GLOBAL_LOCK',      # The fixed lock key
-                    deskpro_id,         #
+                    deskpro_id,
                     now
                 )
                 conn.commit()
                 return True
 
             except pyodbc.IntegrityError:
-                # Another process already holds the lock
+                # Lock already held for this DeskProID
                 return False
 
         finally:
             cursor.close()
             conn.close()
- 
+
+
     def register_case_with_retry(deskpro_id, max_retries=10, delay_seconds=30):
+        """
+        Attempts to acquire a lock with retries.
+        """
         for attempt in range(1, max_retries + 1):
             if try_register_case(deskpro_id):
-                print(f"[Attempt {attempt}] Lock acquired — proceeding with case logic.")
+                print(f"[Attempt {attempt}] Lock acquired for DeskProID {deskpro_id} — proceeding.")
                 return True
             else:
-                print(f"[Attempt {attempt}] Lock not acquired, retrying in {delay_seconds} seconds...")
+                print(f"[Attempt {attempt}] Lock for DeskProID {deskpro_id} is held. Retrying in {delay_seconds} seconds...")
                 time.sleep(delay_seconds)
-        print("Max retries reached — aborting case creation.")
+
+        print(f"Max retries reached — aborting case creation for DeskProID {deskpro_id}.")
         return False
-   
- 
+    
+
     if NovaSag and register_case_with_retry(DeskProID):
         KMD_access_token = GetKmdAcessToken.GetKMDToken(orchestrator_connection=orchestrator_connection)
         GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= AktSagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, AktindsigtsDato = AktindsigtsDato, orchestrator_connection= orchestrator_connection, DeskProID = DeskProID)
