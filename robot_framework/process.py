@@ -38,6 +38,14 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
 
+    def shorten_document_title(doktitle):
+        if len(doktitle) > 99:
+            print(f'Dokumenttitlen {doktitle} er for lang {len(doktitle)}- afkortes')
+            doktitle = doktitle[:95]
+            return doktitle
+        else:
+            return doktitle
+        
     log = True
     send_email = True
 
@@ -378,7 +386,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                         data_table = pd.concat([data_table, pd.DataFrame([{
                             "Akt ID": AktID,
                             "Dok ID": DokID,
-                            "Dokumenttitel": Dokumenttitel,
+                            "Dokumenttitel": shorten_document_title(Dokumenttitel),
                             "Dokumentkategori": DokumentKategori,
                             "Dokumentdato": DokumentDato,
                             "Bilag": BilagChild,
@@ -392,7 +400,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                         data_table = pd.concat([data_table, pd.DataFrame([{
                             "Akt ID": AktID,
                             "Dok ID": DokID,
-                            "Dokumenttitel": Dokumenttitel,
+                            "Dokumenttitel": shorten_document_title(Dokumenttitel),
                             "Dokumentkategori": DokumentKategori,
                             "Dokumentdato": DokumentDato,
                             "Bilag": BilagChild,
@@ -454,7 +462,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 data_table = pd.concat([data_table, pd.DataFrame([{
                     "Akt ID": AktID,
                     "Dok ID": DokID,
-                    "Dokumenttitel": Dokumenttitel,
+                    "Dokumenttitel": shorten_document_title(Dokumenttitel),
                     "Dokumentkategori": DokumentKategori,
                     "Dokumentdato": formatted_date,
                     "Bilag": "",
@@ -468,7 +476,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 data_table = pd.concat([data_table, pd.DataFrame([{
                     "Akt ID": AktID,
                     "Dok ID": DokID,
-                    "Dokumenttitel": Dokumenttitel,
+                    "Dokumenttitel": shorten_document_title(Dokumenttitel),
                     "Dokumentkategori": DokumentKategori,
                     "Dokumentdato": formatted_date,
                     "Bilag": "",
@@ -661,15 +669,15 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         Mappe2 = Mappe2[:95] + "(...)"
 
     total_length = len(Mappe1) + len(Mappe2) + 17  # 17 is for folder structure overhead
-    if total_length > 400:
-        excess_length = total_length - 400
+    if total_length > 290:
+        excess_length = total_length - 290
         half_excess = excess_length // 2
         Mappe1 = Mappe1[:len(Mappe1) - half_excess - 5] + "(...)"
         Mappe2 = Mappe2[:len(Mappe2) - half_excess - 5] + "(...)"
 
     parent_folder_name = API_url.split(".com")[-1] + "/Delte dokumenter/Dokumentlister" 
 
-        # Create main folder
+    # Create main folder
     root_folder = ctx.web.get_folder_by_server_relative_url(parent_folder_name)
     main_folder = root_folder.folders.add(Mappe1) 
     ctx.execute_query()
