@@ -17,6 +17,7 @@ from office365.runtime.auth.user_credential import UserCredential
 from office365.sharepoint.client_context import ClientContext
 from office365.sharepoint.sharing.links.kind import SharingLinkKind
 from office365.sharepoint.webs.web import Web
+from office365.runtime.client_request_exception import ClientRequestException
 from requests_ntlm import HttpNtlmAuth
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
@@ -32,7 +33,6 @@ import GenerateNovaCase
 import GetKmdAcessToken
 import time
 import pyodbc
-
 # pylint: disable-next=unused-argument
 def process(orchestrator_connection: OrchestratorConnection, queue_element: QueueElement | None = None) -> None:
     """Do the primary process of the robot."""
@@ -700,14 +700,25 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
 
     file_path = excel_file_path  # Ensure it points to the created Excel file
 
+
+    SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
+    SMTP_PORT = 25
+    SCREENSHOT_SENDER = "aktbob@aarhus.dk"
     # Check if the file exists and upload it
-    if os.path.exists(file_path):
+    try:
         with open(file_path, "rb") as file_content:
             subfolder.upload_file(os.path.basename(file_path), file_content.read())
         ctx.execute_query()
-        
-    else:
-        print(f"File '{file_path}' does not exist.")
+    except ClientRequestException as e:
+        if e.response is not None and e.response.status_code == 423:
+            orchestrator_connection.log_info("File is locked (HTTP 423 Locked).")
+            error_json = json.loads(e.response.text)
+            error_code = error_json["error"]["code"]
+            error_message = error_json["error"]["message"]["value"]
+            send_dokumentliste_locked(MailModtager, SagsID, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT, error_code, error_message)
+            return
+        else:
+            raise
 
     if log:
         orchestrator_connection.log_info("Folders created in sharepoint")
@@ -719,10 +730,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     # Step 3: Verify the sharing link
     result = Web.get_sharing_link_kind(ctx, link_url).execute_query()
 
-    # SMTP Configuration (from your provided details)
-    SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
-    SMTP_PORT = 25
-    SCREENSHOT_SENDER = "aktbob@aarhus.dk"
 
     memodata_obs = (
         "Vær opmærksom på, at denne sag indeholder dokumenter af typen memometadata, tunnel-marking eller fra flettelisten. Disse er automatisk sat til 'Nej', da de kan indeholde fortrolige oplysninger. Er dette forkert, kan du blot sætte dem til 'Ja' eller 'Delvis'."
@@ -963,3 +970,41 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         GenerateNovaCase.invoke_GenerateNovaCase(Sagsnummer = SagsID, KMDNovaURL= NOVA_URL, KMD_access_token = KMD_access_token, AktSagsURL= AktSagsURL, IndsenderNavn = IndsenderNavn, IndsenderMail= IndsenderMail, AktindsigtsDato = AktindsigtsDato, orchestrator_connection= orchestrator_connection, DeskProID = DeskProID)
     elif NovaSag:
         orchestrator_connection.log_info("Skipping Nova case generation — already in progress or created by another process.")
+
+def send_dokumentliste_locked(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT, error_code, error_message):
+
+    # Email subject
+    subject = f"Dokumentliste for {sags_id} er låst"
+
+    # Email body (HTML)
+    body = f"""
+    <html>
+        <body>
+            <p>Dokumentlisten for {sags_id} er låst, og derfor kan robotten ikke generere en ny dokumentliste. Sørg for at lukke dokumentlisten ned på alle computere der kan have den åben, både i browseren og excel, og prøv at generere dokumentlisten igen.</p>
+            <br>
+            <p><b>Fejlinfo:</b></p>
+        <ul>
+            <li><b>Kode:</b> {error_code}</li>
+            <li><b>Besked:</b> {error_message}</li>
+        </ul>
+        </body>
+    </html>
+    """
+    # Create the email message
+    msg = EmailMessage()
+    msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
+    msg['From'] = SCREENSHOT_SENDER
+    msg['Subject'] = subject
+    msg.set_content("Please enable HTML to view this message.")
+    msg.add_alternative(body, subtype='html')
+    msg['Reply-To'] = UdviklerMail
+    msg['Bcc'] = UdviklerMail
+
+    # Send the email using SMTP
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.send_message(msg)
+            
+    except Exception as e:
+        print(f"Failed to send locked email: {e}")
+        
