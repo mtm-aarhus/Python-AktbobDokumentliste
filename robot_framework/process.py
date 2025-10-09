@@ -1,8 +1,5 @@
 """This module contains the main process of the robot."""
 
-
-###### dræb excel inden det sættes i gang - se på om excel holdes åbent ##########################
-
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from OpenOrchestrator.database.queues import QueueElement
 import os
@@ -247,6 +244,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     pattern = r'[~#%&*{}\:\\<>?/+|\"\'\t\[\]`^@=!$();\€£¥₹]'
     SagsTitel = re.sub(pattern, '', str(SagsTitel))
     SagsTitel = " ".join(SagsTitel.split())
+    document_without_date = False
 
     # Define the structure of the DataTable
     columns = [
@@ -356,6 +354,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     DokumentURL = GOAPI_URL.replace("ad.", "") + quote(item.get("FileRef", ""), safe="/")
                     AktID = item.get("CaseRecordNumber", "").replace(".", "")
                     DokumentDato = str(item.get("Dato"))
+                    if not DokumentDato:
+                        document_without_date = True
                     Dokumenttitel = item.get("Title", "")
                     DokID = str(item.get("DocID"))
                     DokumentKategori = str(item.get("Korrespondance"))
@@ -450,6 +450,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
             DokumentURL = ""
             AktID = aktid_number
             DokumentDato = str(documents[i]['documentDate'])
+            if not DokumentDato:
+                document_without_date = True
             date_object = datetime.strptime(DokumentDato, "%Y-%m-%dT%H:%M:%S")
             formatted_date = str(date_object.strftime("%d-%m-%Y"))
             Dokumenttitel = documents[i]['title']
@@ -487,6 +489,14 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     "Begrundelse hvis nej eller delvis": ""
                 }])], ignore_index=True)
             aktid_number += 1
+
+    SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
+    SMTP_PORT = 25
+    SCREENSHOT_SENDER = "aktbob@aarhus.dk"
+
+    if document_without_date:
+        send_missing_documentdate(MailModtager, SagsID, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT)
+        return
 
     # Define font settings
     FONT_PATH = "calibri.ttf"  # Ensure this file exists in your directory
@@ -701,9 +711,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     file_path = excel_file_path  # Ensure it points to the created Excel file
 
 
-    SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
-    SMTP_PORT = 25
-    SCREENSHOT_SENDER = "aktbob@aarhus.dk"
+
     # Check if the file exists and upload it
     try:
         with open(file_path, "rb") as file_content:
@@ -987,6 +995,37 @@ def send_dokumentliste_locked(to_address: str | list[str], sags_id: str, SCREENS
             <li><b>Kode:</b> {error_code}</li>
             <li><b>Besked:</b> {error_message}</li>
         </ul>
+        </body>
+    </html>
+    """
+    # Create the email message
+    msg = EmailMessage()
+    msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
+    msg['From'] = SCREENSHOT_SENDER
+    msg['Subject'] = subject
+    msg.set_content("Please enable HTML to view this message.")
+    msg.add_alternative(body, subtype='html')
+    msg['Reply-To'] = UdviklerMail
+    msg['Bcc'] = UdviklerMail
+
+    # Send the email using SMTP
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.send_message(msg)
+            
+    except Exception as e:
+        print(f"Failed to send locked email: {e}")
+
+def send_missing_documentdate(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT):
+
+    # Email subject
+    subject = f"{sags_id} indeholder dokumenter uden dato"
+
+    # Email body (HTML)
+    body = f"""
+    <html>
+        <body>
+            <p>{sags_id} indeholder dokumenter i GO, der mangler dato. Sørg for at alle dokumenter i originalsagen har en dato, og genkør derefter dokumentlisten.</p>
         </body>
     </html>
     """

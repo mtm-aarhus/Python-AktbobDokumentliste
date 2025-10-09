@@ -39,7 +39,7 @@ orchestrator_connection = OrchestratorConnection(
 
 qe = make_queue_element_with_payload(
     payload={
-        "SagsNummer": "GEO-1234-56789",
+        "SagsNummer": "GEO-2013-026501",
     },
     queue_name="AktbobDokumentlisteQueue",
     reference="Sandbox",
