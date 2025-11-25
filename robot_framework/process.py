@@ -34,6 +34,10 @@ import pyodbc
 def process(orchestrator_connection: OrchestratorConnection, queue_element: QueueElement | None = None) -> None:
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
+    
+    SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
+    SMTP_PORT = 25
+    SCREENSHOT_SENDER = "aktbob@aarhus.dk"
 
     def shorten_document_title(doktitle):
         if len(doktitle) > 99:
@@ -175,8 +179,14 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if GeoSag:
         session.auth = HttpNtlmAuth(GOAPILIVECRED_username, GOAPILIVECRED_password)
         session.headers.update({"Content-Type": "application/json"})
-        response = session.get(url, timeout=500)
-        response.raise_for_status()
+        try:
+            response = session.get(url, timeout=500)
+            if response.status_code >= 400:
+                raise requests.exceptions.HTTPError(f"HTTP {response.status_code}")
+        except requests.exceptions.RequestException:
+            orchestrator_connection.log_info(f'Der kan ikke hentes sagstitel på sag {SagsID}. Mail sendt til sagsbehandler')
+            send_not_casenumber(MailModtager, SagsID, SCREENSHOT_SENDER,UdviklerMail, SMTP_SERVER, SMTP_PORT)
+            return
 
         # Process the response content directly (assuming response.status_code == 200)
         SagMetaData = response.text
@@ -232,8 +242,12 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         # Process the response content directly (assuming response.status_code == 200)
         SagMetaData = response.text
         json_obj = json.loads(SagMetaData)
-
-        SagsTitel = json_obj['cases'][0]['caseAttributes']['title']
+        try:
+            SagsTitel = json_obj['cases'][0]['caseAttributes']['title']
+        except:
+            orchestrator_connection.log_info(f'Der kan ikke hentes sagstitel på sag {SagsID}. Mail sendt til sagsbehandler')
+            send_not_casenumber(MailModtager, SagsID, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT)
+            return
         SagsURL = "" #SagsURL is nothing for now due to the setup in nova - potentially add later
 
     # Send GET request    
@@ -490,9 +504,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                 }])], ignore_index=True)
             aktid_number += 1
 
-    SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
-    SMTP_PORT = 25
-    SCREENSHOT_SENDER = "aktbob@aarhus.dk"
 
     if document_without_date:
         send_missing_documentdate(MailModtager, SagsID, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT)
@@ -1047,3 +1058,33 @@ def send_missing_documentdate(to_address: str | list[str], sags_id: str, SCREENS
     except Exception as e:
         print(f"Failed to send locked email: {e}")
         
+def send_not_casenumber(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT):
+
+    # Email subject
+    subject = f"{sags_id} er ikke et sagsnummer"
+
+    # Email body (HTML)
+    body = f"""
+    <html>
+        <body>
+            <p>Der kan ikke hentes data fra sag {sags_id}. Tjek, om sagsnummeret er korrekt.</p>
+        </body>
+    </html>
+    """
+    # Create the email message
+    msg = EmailMessage()
+    msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
+    msg['From'] = SCREENSHOT_SENDER
+    msg['Subject'] = subject
+    msg.set_content("Please enable HTML to view this message.")
+    msg.add_alternative(body, subtype='html')
+    msg['Reply-To'] = UdviklerMail
+    msg['Bcc'] = UdviklerMail
+
+    # Send the email using SMTP
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.send_message(msg)
+            
+    except Exception as e:
+        print(f"Failed to send locked email: {e}")
