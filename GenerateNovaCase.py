@@ -131,7 +131,11 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             # Extract bfeNumber from buildingCase -> propertyInformation
             property_info = case.get("buildingCase", {}).get("propertyInformation", {})
             bfeNumber = case["buildingCase"]["propertyInformation"]["bfeNumber"]
-            CadastralId = case["buildingCase"]["propertyInformation"]["cadastralId"]
+            CadastralId = (
+                case.get("buildingCase", {})
+                    .get("propertyInformation", {})
+                    .get("cadastralId", False)
+            )
                     # Initialize cadastral variables
             cadastralLetters = cadastralNumber = cadastralDistrictCode = cadastralDistrictName = None
 
