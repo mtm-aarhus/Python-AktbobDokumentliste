@@ -147,14 +147,13 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 cadastralNumber = first_cadastral.get("cadastralNumber")
                 cadastralDistrictCode = first_cadastral.get("cadastralDistrictCode")
                 cadastralDistrictName = first_cadastral.get("cadastralDistrictName")
-                # Print cadastral-related values
-                print("CadastralID: ", CadastralId)
-                print("Cadastral Letters:", cadastralLetters)
-                print("Cadastral Number:", cadastralNumber)
-                print("Cadastral District Code:", cadastralDistrictCode)
-                print("Cadastral District Name:", cadastralDistrictName)
+                orchestrator_connection.log_info(f"CadastralID:  {CadastralId}")
+                orchestrator_connection.log_info(f"Cadastral Letters: {cadastralLetters}")
+                orchestrator_connection.log_info(f"Cadastral Number: {cadastralNumber}")
+                orchestrator_connection.log_info(f"Cadastral District Code: {cadastralDistrictCode}")
+                orchestrator_connection.log_info(f"Cadastral District Name: {cadastralDistrictName}")
             else:
-                print("No cadastral numbers found.")
+                orchestrator_connection.log_info("No cadastral numbers found.")
             CadastralBool = all([
             CadastralId,
             cadastralLetters,
@@ -162,9 +161,6 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             cadastralDistrictName,
             cadastralDistrictCode
             ])
-
-            # Optional: Print the result
-            print("CadastralBool:", CadastralBool)
 
             primary_case_parties = [
                 {
@@ -243,7 +239,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
         
         # Now loop through the found case numbers
         for case_number in old_case_numbers:
-            print("Found old case number:", case_number)
+            orchestrator_connection.log_info(f"Found old case number: {case_number}")
              ### --- Henter caseinfo --- ###
             TransactionID = str(uuid.uuid4())
 
@@ -287,23 +283,23 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     OldCaseAdress = case["buildingCase"]["propertyInformation"]["caseAddress"]
 
                     if str(OldbfeNumber) == str(bfeNumber):
-                        print(f"Match found: Old BFE ({OldbfeNumber}) == Current BFE ({bfeNumber})")
+                        orchestrator_connection.log_info(f"Match found: Old BFE ({OldbfeNumber}) == Current BFE ({bfeNumber})")
                         old_case_number = case_number
                         BFEMatch = True
                         break  # Exit loop after first match
                     else:
-                        print(f"No match: Old BFE ({OldbfeNumber}) != Current BFE ({bfeNumber})")
+                        orchestrator_connection.log_info(f"No match: Old BFE ({OldbfeNumber}) != Current BFE ({bfeNumber})")
 
                 else:
                     raise Exception (f"KMD API call failed for {case_number}, status: {response.status_code}, message: {response.text}")
 
             except Exception as e:
-                print(f"An error occurred while calling KMD API for {case_number}: {e}")
+                orchestrator_connection.log_info(f"An error occurred while calling KMD API for {case_number}: {e}")
 
         if not BFEMatch:
-            print("No matching BFE number found in any case.")
+            orchestrator_connection.log_info("No matching BFE number found in any case.")
         else:
-            print("BFE match confirmed!")
+            orchestrator_connection.log_info("BFE match confirmed!")
             TransactionID = str(uuid.uuid4())
 
             # Parse the string into a datetime object
@@ -378,7 +374,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     OldCaseAdress = valid_case["buildingCase"]["propertyInformation"]["caseAddress"]
                     NovaCaseExists = True
                 else:
-                    print("Tjekker om sagen er opdateret i forvejen")
+                    orchestrator_connection.log_info("Tjekker om sagen er opdateret i forvejen")
                     data = {
                     "common": {
                         "transactionId": TransactionID
@@ -436,11 +432,11 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                         
     except Exception as e:
         NovaCaseExists = False
-        print(f"An error occurred during ticket processing: {e}")
+        orchestrator_connection.log_info(f"An error occurred during ticket processing: {e}")
 
 
     if BFEMatch and NovaCaseExists:
-        print("BFE matcher opdaterer sagen ")
+        orchestrator_connection.log_info("BFE matcher opdaterer sagen ")
         orchestrator_connection.log_info(f"Sagen er oprettet, det gamle CaseUuid ligger allerede i databasen: {OldCaseUuid}")
 
         # Define API URL
@@ -473,13 +469,13 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
 
         # Check status and handle response
         if response.status_code == 200:
-            print(f"Sagen er opdateret: {response.status_code}")
+            orchestrator_connection.log_info(f"Sagen er opdateret: {response.status_code}")
     
         else:
             raise Exception(f"API request failed with status {response.status_code}: {response.text}")
      
     else:
-        print("No matching BFE number found opretter sagen på ny.")
+        orchestrator_connection.log_info("No matching BFE number found opretter sagen på ny.")
         # ### ---  Opretter sagen --- ####   
         JournalDate = datetime.now().strftime("%Y-%m-%dT00:00:00")
         TransactionID = str(uuid.uuid4())
@@ -487,7 +483,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
         JournalUuid = str(uuid.uuid4())
         Index_Uuid = str(uuid.uuid4())
         link_text = "GO Aktindsigtssag"
-        print(f"Aktsagsurl: {AktSagsURL}")
+        orchestrator_connection.log_info(f"Aktsagsurl: {AktSagsURL}")
         # Step 1: Create a new Word document
         doc = Document()
         doc.add_paragraph("Aktindsigtssag Link: " + AktSagsURL)  # Add content to the document
@@ -716,16 +712,8 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
         # Make the API request
         try:
             response = requests.post(url, headers=headers, json=payload)
-            
-            # Handle response
-            if response.status_code == 200:
-                print(response.text)
-            else:
-                print("Failed to send request. Status Code:", response.status_code)
-                print("Response Data:", response.text)  # Print error response
-                raise Exception
         except Exception as e:
-            raise Exception("Failed to fetch Sagstitel (Nova):", str(e))
+            raise Exception("Failed to fetch from nova:", str(e))
 
         # Henter liste over opgaver: 
         task_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")   # dags dato sættes      
@@ -752,8 +740,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             response = requests.put(Caseurl, headers=headers, json=data)
 
             if response.status_code == 200:
-                print("API call successful. Parsing task list...")
-                
+
                 klar_til_sagsbehandling_uuid = None
                 afslut_sagen_uuid = None
                 tidsreg_sagsbehandling_uuid = None
@@ -778,19 +765,18 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     ("11. Tidsreg: Sagsbehandling", tidsreg_sagsbehandling_uuid),
                 ]
 
-                print("\nFinal result:")
                 for task_name, task_uuid in task_uuids:
                     if task_uuid:
-                        print(f"UUID for '{task_name}': {task_uuid}")
+                        orchestrator_connection.log_info(f"UUID for '{task_name}': {task_uuid}")
                     else:
-                        print(f"Missing UUID for task: '{task_name}'")
+                        orchestrator_connection.log_info(f"Missing UUID for task: '{task_name}'")
             else:
-                print(f"Failed to fetch task data. Status code: {response.status_code}")
-                print(response.text)
+                orchestrator_connection.log_info(f"Failed to fetch task data. Status code: {response.status_code}")
+                orchestrator_connection.log_info(response.text)
                 raise Exception("Failed to fetch task data.")
 
         except Exception as e:
-            print("Exception occurred:", str(e))
+           orchestrator_connection.log_info(str(e))
 
             # -- Opdaterer Task listen --- #
             
@@ -826,10 +812,10 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             try:
                 response = requests.put(Caseurl, headers=headers, json=task_data)
                 if response.status_code == 200:
-                    print(f"{task_name} er igangsat")
+                    orchestrator_connection.log_info(f"{task_name} er igangsat")
                 else: 
-                    print(response.status_code)
-                    print(response.text)
+                    orchestrator_connection.log_info(response.status_code)
+                    orchestrator_connection.log_info(response.text)
             except Exception as e:
                 raise Exception("Failed to update task:", str(e))
             
