@@ -58,7 +58,8 @@ def GetKMDToken(orchestrator_connection: OrchestratorConnection):
             try:
                 # Sending POST request to get the access token
                 # response = requests.post(KMD_URL, data=keys) Gammelt kald 
-                response = nova_request("POST", KMD_URL,  data=keys)
+                headers = {"Content-Type": "application/x-www-form-urlencoded"}
+                response = nova_request("POST", KMD_URL, headers = headers, data=keys)
                 # response.raise_for_status()  
             except requests.exceptions.RequestException as e:
                 raise ConnectionError(f"Failed to fetch new access token: {e}")

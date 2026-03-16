@@ -36,7 +36,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
     
-    
     SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
     SMTP_PORT = 25
     SCREENSHOT_SENDER = "aktbob@aarhus.dk"
@@ -147,7 +146,8 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         
                 # Sending POST request to get the access token
                 # response = requests.post(KMD_URL, data=keys)
-                response = nova_request("PUT", KMD_URL, data=keys)
+                headers = {"Content-Type": "application/x-www-form-urlencoded"}
+                response = nova_request("PUT", KMD_URL, headers = headers, data=keys)
         
                 # Check if the request was successful (status code 200)
                 if response.status_code == 200:
