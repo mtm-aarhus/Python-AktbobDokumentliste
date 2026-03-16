@@ -40,6 +40,8 @@ orchestrator_connection = OrchestratorConnection(
     None
 )
 queue_element = json.dumps({})
+"""Do the primary process of the robot."""
+orchestrator_connection.log_trace("Running process.")
 
 SMTP_SERVER = "smtp.adm.aarhuskommune.dk"
 SMTP_PORT = 25
@@ -140,7 +142,6 @@ else:
             scope = 'client'
             grant_type = 'client_credentials'
     
-    
             # Data to be sent in the POST request
             keys = {
                 'client_id': client_id,
@@ -151,7 +152,8 @@ else:
     
             # Sending POST request to get the access token
             # response = requests.post(KMD_URL, data=keys)
-            response = nova_request("PUT", KMD_URL, data=keys)
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+            response = nova_request("POST", KMD_URL, headers=headers, data=keys)
     
             # Check if the request was successful (status code 200)
             if response.status_code == 200:
@@ -190,6 +192,7 @@ if GeoSag:
     except requests.exceptions.RequestException:
         orchestrator_connection.log_info(f'Der kan ikke hentes sagstitel på sag {SagsID}. Mail sendt til sagsbehandler')
         send_not_casenumber(MailModtager, SagsID, SCREENSHOT_SENDER,UdviklerMail, SMTP_SERVER, SMTP_PORT)
+
 
     # Process the response content directly (assuming response.status_code == 200)
     SagMetaData = response.text
@@ -251,6 +254,7 @@ if NovaSag:
     except:
         orchestrator_connection.log_info(f'Der kan ikke hentes sagstitel på sag {SagsID}. Mail sendt til sagsbehandler')
         send_not_casenumber(MailModtager, SagsID, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT)
+
     SagsURL = "" #SagsURL is nothing for now due to the setup in nova - potentially add later
 
 # Removal of illegal characters and double spaces
@@ -416,7 +420,7 @@ if GeoSag:
 
             firstrun = False
 else:
- 
+
     payload = json.dumps({
         "common": {"transactionId": id},
         "paging": {
@@ -439,36 +443,33 @@ else:
             "subDocuments": True
         }
     })
- 
+
     headers = {
         "Authorization": f"Bearer {KMD_access_token}",
         "Content-Type": "application/json"
     }
- 
+
     # response = requests.request("PUT", Document_url, headers=headers, data=payload)
     # response.raise_for_status()
     response = nova_request("PUT", Document_url, headers=headers, data=payload)
- 
+
     documents = json.loads(response.text)["documents"]
- 
+
     document_groups = []
- 
-    # ------------------------------------------------
-    # FETCH MAIN DOCUMENTS AND SUBDOCUMENTS
-    # ------------------------------------------------
- 
+
+
     for doc in documents:
- 
+
         documentUuid = doc["documentUuid"]
         numberOfSubDocuments = doc.get("numberOfSubDocuments", 0)
- 
+
         group = {
             "main": doc,
             "subs": []
         }
- 
+
         if numberOfSubDocuments > 0:
- 
+
             sub_payload = json.dumps({
                 "common": {"transactionId": id},
                 "paging": {
@@ -491,77 +492,66 @@ else:
                     "subDocuments": True
                 }
             })
- 
+
             sub_response = nova_request("PUT", Document_url, headers=headers, data=sub_payload)
- 
+
             sub_documents = json.loads(sub_response.text).get("documents", [])
- 
+
             group["subs"] = sub_documents
- 
+
         document_groups.append(group)
- 
-    # ------------------------------------------------
-    # COUNT DOCUMENTS
-    # ------------------------------------------------
- 
+
+
     main_doc_count = len(document_groups)
     sub_doc_count = sum(len(g["subs"]) for g in document_groups)
     total_docs = main_doc_count + sub_doc_count
- 
-    print(f"Main documents: {main_doc_count}")
-    print(f"Subdocuments: {sub_doc_count}")
-    print(f"Total documents: {total_docs}")
- 
+
     aktid_number = total_docs
- 
-    # ------------------------------------------------
-    # BUILD DATAFRAME
-    # ------------------------------------------------
- 
+
     for group in document_groups:
- 
+
         main = group["main"]
         subs = group["subs"]
- 
+
         Dokumenttitel = main["title"]
         DokID = main["documentNumber"]
         DokumentKategori = main["documentType"]
         DokumentURL = ""
- 
+
         DokumentDato = str(main["documentDate"])
- 
+
         if not DokumentDato:
             document_without_date = True
- 
+
         date_object = datetime.strptime(DokumentDato, "%Y-%m-%dT%H:%M:%S")
         formatted_date = date_object.strftime("%d-%m-%Y")
- 
+
         AktID = aktid_number
         aktid_number -= 1
- 
+
         # Bilag column contains all subdocument numbers
         bilag = ""
         if len(subs) > 0:
             bilag = ", ".join(
                 sub["documentNumber"] for sub in subs if sub.get("documentNumber")
             )
- 
+
         # tunnel/memo logic
         if (
             "tunnel_marking" in Dokumenttitel.lower()
             or "memometadata" in Dokumenttitel.lower()
             or "fletteliste" in Dokumenttitel.lower()
         ):
- 
+
             memo_tunnel = True
             aktindsigt = "Nej"
             begrundelse = "Tavshedsbelagte oplysninger - om private forhold"
- 
+
         else:
- 
+
             aktindsigt = ""
             begrundelse = ""
- 
+
         data_table = pd.concat([
             data_table,
             pd.DataFrame([{
@@ -578,44 +568,41 @@ else:
                 "Begrundelse hvis nej eller delvis": begrundelse
             }])
         ], ignore_index=True)
- 
-        # ------------------------------------------------
-        # PROCESS SUBDOCUMENTS
-        # ------------------------------------------------
- 
+
+
         for sub in subs:
- 
+
             sub_title = sub["title"]
             sub_type = sub["documentType"]
             sub_id = sub["documentNumber"]
- 
+
             sub_date = str(sub["documentDate"])
- 
+
             sub_date_object = datetime.strptime(
                 sub_date,
                 "%Y-%m-%dT%H:%M:%S"
             )
- 
+
             sub_formatted_date = sub_date_object.strftime("%d-%m-%Y")
- 
+
             AktID = aktid_number
             aktid_number -= 1
- 
+
             if (
                 "tunnel_marking" in sub_title.lower()
                 or "memometadata" in sub_title.lower()
                 or "fletteliste" in sub_title.lower()
             ):
- 
+
                 memo_tunnel = True
                 aktindsigt = "Nej"
                 begrundelse = "Tavshedsbelagte oplysninger - om private forhold"
- 
+
             else:
- 
+
                 aktindsigt = ""
                 begrundelse = ""
- 
+
             data_table = pd.concat([
                 data_table,
                 pd.DataFrame([{
@@ -632,9 +619,10 @@ else:
                     "Begrundelse hvis nej eller delvis": begrundelse
                 }])
             ], ignore_index=True)
- 
+
 if document_without_date:
     send_missing_documentdate(MailModtager, SagsID, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT)
+
 
 # Define font settings
 FONT_PATH = "calibri.ttf"  # Ensure this file exists in your directory
