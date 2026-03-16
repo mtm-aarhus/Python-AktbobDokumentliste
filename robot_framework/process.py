@@ -66,7 +66,7 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     RobotUsername = RobotCredentials.username
     RobotPassword = RobotCredentials.password
 
-    queue_json = json.loads(queue_element)
+    queue_json = json.loads(queue_element.data)
 
     # Retrieve elements from queue_json
     SagsID = str(queue_json["SagsNummer"])
