@@ -1095,101 +1095,101 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     elif NovaSag:
         orchestrator_connection.log_info("Skipping Nova case generation — already in progress or created by another process.")
 
-    def send_dokumentliste_locked(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT, error_code, error_message):
+def send_dokumentliste_locked(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT, error_code, error_message):
 
-        # Email subject
-        subject = f"Dokumentliste for {sags_id} er låst"
+    # Email subject
+    subject = f"Dokumentliste for {sags_id} er låst"
 
-        # Email body (HTML)
-        body = f"""
-        <html>
-            <body>
-                <p>Dokumentlisten for {sags_id} er låst, og derfor kan robotten ikke generere en ny dokumentliste. Sørg for at lukke dokumentlisten ned på alle computere der kan have den åben, både i browseren og excel, og prøv at generere dokumentlisten igen.</p>
-                <br>
-                <p><b>Fejlinfo:</b></p>
-            <ul>
-                <li><b>Kode:</b> {error_code}</li>
-                <li><b>Besked:</b> {error_message}</li>
-            </ul>
-            </body>
-        </html>
-        """
-        # Create the email message
-        msg = EmailMessage()
-        msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
-        msg['From'] = SCREENSHOT_SENDER
-        msg['Subject'] = subject
-        msg.set_content("Please enable HTML to view this message.")
-        msg.add_alternative(body, subtype='html')
-        msg['Reply-To'] = UdviklerMail
-        msg['Bcc'] = UdviklerMail
+    # Email body (HTML)
+    body = f"""
+    <html>
+        <body>
+            <p>Dokumentlisten for {sags_id} er låst, og derfor kan robotten ikke generere en ny dokumentliste. Sørg for at lukke dokumentlisten ned på alle computere der kan have den åben, både i browseren og excel, og prøv at generere dokumentlisten igen.</p>
+            <br>
+            <p><b>Fejlinfo:</b></p>
+        <ul>
+            <li><b>Kode:</b> {error_code}</li>
+            <li><b>Besked:</b> {error_message}</li>
+        </ul>
+        </body>
+    </html>
+    """
+    # Create the email message
+    msg = EmailMessage()
+    msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
+    msg['From'] = SCREENSHOT_SENDER
+    msg['Subject'] = subject
+    msg.set_content("Please enable HTML to view this message.")
+    msg.add_alternative(body, subtype='html')
+    msg['Reply-To'] = UdviklerMail
+    msg['Bcc'] = UdviklerMail
 
-        # Send the email using SMTP
-        try:
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-                smtp.send_message(msg)
-                
-        except Exception as e:
-            print(f"Failed to send locked email: {e}")
-
-    def send_missing_documentdate(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT):
-
-        # Email subject
-        subject = f"{sags_id} indeholder dokumenter uden dato"
-
-        # Email body (HTML)
-        body = f"""
-        <html>
-            <body>
-                <p>{sags_id} indeholder dokumenter i GO, der mangler dato. Sørg for at alle dokumenter i originalsagen har en dato, og genkør derefter dokumentlisten.</p>
-            </body>
-        </html>
-        """
-        # Create the email message
-        msg = EmailMessage()
-        msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
-        msg['From'] = SCREENSHOT_SENDER
-        msg['Subject'] = subject
-        msg.set_content("Please enable HTML to view this message.")
-        msg.add_alternative(body, subtype='html')
-        msg['Reply-To'] = UdviklerMail
-        msg['Bcc'] = UdviklerMail
-
-        # Send the email using SMTP
-        try:
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-                smtp.send_message(msg)
-                
-        except Exception as e:
-            print(f"Failed to send locked email: {e}")
+    # Send the email using SMTP
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.send_message(msg)
             
-    def send_not_casenumber(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT):
+    except Exception as e:
+        print(f"Failed to send locked email: {e}")
 
-        # Email subject
-        subject = f"{sags_id} er ikke et sagsnummer"
+def send_missing_documentdate(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT):
 
-        # Email body (HTML)
-        body = f"""
-        <html>
-            <body>
-                <p>Der kan ikke hentes data fra sag {sags_id}. Tjek, om sagsnummeret er korrekt.</p>
-            </body>
-        </html>
-        """
-        # Create the email message
-        msg = EmailMessage()
-        msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
-        msg['From'] = SCREENSHOT_SENDER
-        msg['Subject'] = subject
-        msg.set_content("Please enable HTML to view this message.")
-        msg.add_alternative(body, subtype='html')
-        msg['Reply-To'] = UdviklerMail
-        msg['Bcc'] = UdviklerMail
+    # Email subject
+    subject = f"{sags_id} indeholder dokumenter uden dato"
 
-        # Send the email using SMTP
-        try:
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-                smtp.send_message(msg)
-                
-        except Exception as e:
-            print(f"Failed to send locked email: {e}")
+    # Email body (HTML)
+    body = f"""
+    <html>
+        <body>
+            <p>{sags_id} indeholder dokumenter i GO, der mangler dato. Sørg for at alle dokumenter i originalsagen har en dato, og genkør derefter dokumentlisten.</p>
+        </body>
+    </html>
+    """
+    # Create the email message
+    msg = EmailMessage()
+    msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
+    msg['From'] = SCREENSHOT_SENDER
+    msg['Subject'] = subject
+    msg.set_content("Please enable HTML to view this message.")
+    msg.add_alternative(body, subtype='html')
+    msg['Reply-To'] = UdviklerMail
+    msg['Bcc'] = UdviklerMail
+
+    # Send the email using SMTP
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.send_message(msg)
+            
+    except Exception as e:
+        print(f"Failed to send locked email: {e}")
+        
+def send_not_casenumber(to_address: str | list[str], sags_id: str, SCREENSHOT_SENDER, UdviklerMail, SMTP_SERVER, SMTP_PORT):
+
+    # Email subject
+    subject = f"{sags_id} er ikke et sagsnummer"
+
+    # Email body (HTML)
+    body = f"""
+    <html>
+        <body>
+            <p>Der kan ikke hentes data fra sag {sags_id}. Tjek, om sagsnummeret er korrekt.</p>
+        </body>
+    </html>
+    """
+    # Create the email message
+    msg = EmailMessage()
+    msg['To'] = ', '.join(to_address) if isinstance(to_address, list) else to_address
+    msg['From'] = SCREENSHOT_SENDER
+    msg['Subject'] = subject
+    msg.set_content("Please enable HTML to view this message.")
+    msg.add_alternative(body, subtype='html')
+    msg['Reply-To'] = UdviklerMail
+    msg['Bcc'] = UdviklerMail
+
+    # Send the email using SMTP
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.send_message(msg)
+            
+    except Exception as e:
+        print(f"Failed to send locked email: {e}")
