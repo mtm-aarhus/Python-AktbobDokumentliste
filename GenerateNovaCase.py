@@ -724,7 +724,12 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
             response = nova_request("POST", url, headers=headers, json=payload)
         except Exception as e:
             raise Exception("Failed to fetch from nova:", str(e))
-
+        # Verify the case was actually created before doing anything else.
+        if response.status_code != 200:
+            raise Exception(
+                f"Case/Import failed with status {response.status_code} for CaseUuid {CaseUuid}: {response.text}"
+            )
+        orchestrator_connection.log_info(f"Sagen er oprettet i Nova med CaseUuid: {CaseUuid}")
         # ---------------------------------------------------------------
         # Henter liste over opgaver, med retry/delay da Nova kan være
         # langsom til at oprette standard-tasks på en helt ny sag.
