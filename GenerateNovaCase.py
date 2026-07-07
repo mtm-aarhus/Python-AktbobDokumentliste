@@ -3,6 +3,7 @@ import uuid
 import requests
 import json
 import os
+import time
 from GetKmdAcessToken import GetKMDToken
 from datetime import datetime,timedelta
 import base64
@@ -724,73 +725,111 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
         except Exception as e:
             raise Exception("Failed to fetch from nova:", str(e))
 
-        # Henter liste over opgaver: 
-        task_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")   # dags dato sættes      
-        Caseurl = f"{KMDNovaURL}/Task/GetList?api-version=2.0-Case"
-        TransactionID = str(uuid.uuid4())
-        # Define headers
-        headers = {
-            "Authorization": f"Bearer {KMD_access_token}",
-            "Content-Type": "application/json"
-        }
+        # ---------------------------------------------------------------
+        # Henter liste over opgaver, med retry/delay da Nova kan være
+        # langsom til at oprette standard-tasks på en helt ny sag.
+        # ---------------------------------------------------------------
+        max_retries = 5
+        retry_delay_seconds = 10
 
-        data = {
-        "common": {
-        "transactionId": TransactionID
-        },
-        "paging": {
-        "startRow": 1,
-        "numberOfRows": 3000
-        },
-        "caseUuid": CaseUuid, 
-        "taskDescription": True
-        }
-        try:
-            # response = requests.put(Caseurl, headers=headers, json=data)
-            response = nova_request("PUT", Caseurl, headers=headers, json=data)
+        klar_til_sagsbehandling_uuid = None
+        afslut_sagen_uuid = None
+        tidsreg_sagsbehandling_uuid = None
 
-            if response.status_code == 200:
+        for attempt in range(1, max_retries + 1):
+            task_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")   # dags dato sættes
+            Caseurl = f"{KMDNovaURL}/Task/GetList?api-version=2.0-Case"
+            TransactionID = str(uuid.uuid4())
+            # Define headers
+            headers = {
+                "Authorization": f"Bearer {KMD_access_token}",
+                "Content-Type": "application/json"
+            }
 
-                klar_til_sagsbehandling_uuid = None
-                afslut_sagen_uuid = None
-                tidsreg_sagsbehandling_uuid = None
+            data = {
+            "common": {
+            "transactionId": TransactionID
+            },
+            "paging": {
+            "startRow": 1,
+            "numberOfRows": 3000
+            },
+            "caseUuid": CaseUuid, 
+            "taskDescription": True
+            }
 
-                task_list = response.json().get("taskList", [])
+            try:
+                # response = requests.put(Caseurl, headers=headers, json=data)
+                response = nova_request("PUT", Caseurl, headers=headers, json=data)
 
-                for task in task_list:
-                    title = task.get("taskTitle")
-                    task_uuid = task.get("taskUuid")
+                if response.status_code == 200:
+                    task_list = response.json().get("taskList", [])
 
-                    if title == "05. Klar til sagsbehandling":
-                        klar_til_sagsbehandling_uuid = task_uuid
-                    elif title == "25. Afslut/henlæg sagen":
-                        afslut_sagen_uuid = task_uuid
-                    elif title == "11. Tidsreg: Sagsbehandling":
-                        tidsreg_sagsbehandling_uuid = task_uuid
+                    for task in task_list:
+                        title = task.get("taskTitle")
+                        task_uuid = task.get("taskUuid")
 
-                # Create a list of tuples with task names and their UUIDs
-                task_uuids = [
+                        if title == "05. Klar til sagsbehandling":
+                            klar_til_sagsbehandling_uuid = task_uuid
+                        elif title == "25. Afslut/henlæg sagen":
+                            afslut_sagen_uuid = task_uuid
+                        elif title == "11. Tidsreg: Sagsbehandling":
+                            tidsreg_sagsbehandling_uuid = task_uuid
+
+                    task_uuids = [
+                        ("05. Klar til sagsbehandling", klar_til_sagsbehandling_uuid),
+                        ("25. Afslut/henlæg sagen", afslut_sagen_uuid),
+                        ("11. Tidsreg: Sagsbehandling", tidsreg_sagsbehandling_uuid),
+                    ]
+
+                    if all(uuid_val is not None for _, uuid_val in task_uuids):
+                        orchestrator_connection.log_info(f"Alle task-UUIDs fundet på forsøg {attempt}/{max_retries}.")
+                        for task_name, task_uuid in task_uuids:
+                            orchestrator_connection.log_info(f"UUID for '{task_name}': {task_uuid}")
+                        break  # All tasks found, stop retrying
+                    else:
+                        for task_name, task_uuid in task_uuids:
+                            if task_uuid:
+                                orchestrator_connection.log_info(f"UUID for '{task_name}': {task_uuid}")
+                            else:
+                                orchestrator_connection.log_info(f"Missing UUID for task: '{task_name}' (forsøg {attempt}/{max_retries})")
+                else:
+                    orchestrator_connection.log_info(f"Failed to fetch task data. Status code: {str(response.status_code)} (forsøg {attempt}/{max_retries})")
+                    orchestrator_connection.log_info(response.text)
+
+            except Exception as e:
+                orchestrator_connection.log_info(f"Fejl under hentning af task-liste (forsøg {attempt}/{max_retries}): {str(e)}")
+
+            # If we reach here, at least one task UUID is still missing.
+            if attempt < max_retries:
+                orchestrator_connection.log_info(f"Ikke alle tasks fundet endnu, venter {retry_delay_seconds} sekunder før nyt forsøg...")
+                time.sleep(retry_delay_seconds)
+        else:
+            # Loop completed all retries without finding every task — this is a
+            # real failure, not just a timing issue, so raise it. This ensures
+            # the queue item shows up as a failed process instead of silently
+            # continuing with an incomplete case.
+            missing = [
+                name for name, val in [
                     ("05. Klar til sagsbehandling", klar_til_sagsbehandling_uuid),
                     ("25. Afslut/henlæg sagen", afslut_sagen_uuid),
                     ("11. Tidsreg: Sagsbehandling", tidsreg_sagsbehandling_uuid),
-                ]
+                ] if not val
+            ]
+            raise Exception(
+                f"Kunne ikke finde alle task-UUIDs for CaseUuid {CaseUuid} efter {max_retries} forsøg. "
+                f"Mangler: {missing}"
+            )
 
-                for task_name, task_uuid in task_uuids:
-                    if task_uuid:
-                        orchestrator_connection.log_info(f"UUID for '{task_name}': {task_uuid}")
-                    else:
-                        orchestrator_connection.log_info(f"Missing UUID for task: '{task_name}'")
-            else:
-                orchestrator_connection.log_info(f"Failed to fetch task data. Status code: {response.status_code}")
-                orchestrator_connection.log_info(response.text)
-                raise Exception("Failed to fetch task data.")
-
-        except Exception as e:
-           orchestrator_connection.log_info(str(e))
+        task_uuids = [
+            ("05. Klar til sagsbehandling", klar_til_sagsbehandling_uuid),
+            ("25. Afslut/henlæg sagen", afslut_sagen_uuid),
+            ("11. Tidsreg: Sagsbehandling", tidsreg_sagsbehandling_uuid),
+        ]
 
             # -- Opdaterer Task listen --- #
-            
-        for task_name,task_uuid in task_uuids:
+
+        for task_name, task_uuid in task_uuids:
             Caseurl = f"{KMDNovaURL}/Task/Update?api-version=2.0-Case"
             TransactionID = str(uuid.uuid4())
             # Define headers
@@ -814,7 +853,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     "fullName": "Aktindsigter Novabyg"
                 }
             },
-            "startDate": task_date,
+            "startDate": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "statusCode": "S",
             "taskType": "Aktivitet" 
             }
@@ -825,7 +864,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 if response.status_code == 200:
                     orchestrator_connection.log_info(f"{task_name} er igangsat")
                 else: 
-                    orchestrator_connection.log_info(response.status_code)
+                    orchestrator_connection.log_info(str(response.status_code))
                     orchestrator_connection.log_info(response.text)
             except Exception as e:
                 raise Exception("Failed to update task:", str(e))
