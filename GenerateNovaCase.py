@@ -152,11 +152,11 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 cadastralNumber = first_cadastral.get("cadastralNumber")
                 cadastralDistrictCode = first_cadastral.get("cadastralDistrictCode")
                 cadastralDistrictName = first_cadastral.get("cadastralDistrictName")
-                orchestrator_connection.log_info(f"CadastralID:  {CadastralId}")
-                orchestrator_connection.log_info(f"Cadastral Letters: {cadastralLetters}")
-                orchestrator_connection.log_info(f"Cadastral Number: {cadastralNumber}")
-                orchestrator_connection.log_info(f"Cadastral District Code: {cadastralDistrictCode}")
-                orchestrator_connection.log_info(f"Cadastral District Name: {cadastralDistrictName}")
+                orchestrator_connection.log_info(
+                    f"CadastralID: {CadastralId}, Letters: {cadastralLetters}, "
+                    f"Number: {cadastralNumber}, District Code: {cadastralDistrictCode}, "
+                    f"District Name: {cadastralDistrictName}"
+                )
             else:
                 orchestrator_connection.log_info("No cadastral numbers found.")
             CadastralBool = all([
@@ -300,12 +300,11 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     raise Exception (f"KMD API call failed for {case_number}, status: {response.status_code}, message: {response.text}")
 
             except Exception as e:
-                orchestrator_connection.log_info(f"An error occurred while calling KMD API for {case_number}: {e}")
+                orchestrator_connection.log_error(f"An error occurred while calling KMD API for {case_number}: {e}")
 
         if not BFEMatch:
             orchestrator_connection.log_info("No matching BFE number found in any case.")
         else:
-            orchestrator_connection.log_info("BFE match confirmed!")
             TransactionID = str(uuid.uuid4())
 
             # Parse the string into a datetime object
@@ -381,7 +380,6 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                     OldCaseAdress = valid_case["buildingCase"]["propertyInformation"]["caseAddress"]
                     NovaCaseExists = True
                 else:
-                    orchestrator_connection.log_info("Tjekker om sagen er opdateret i forvejen")
                     data = {
                     "common": {
                         "transactionId": TransactionID
@@ -440,11 +438,10 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                         
     except Exception as e:
         NovaCaseExists = False
-        orchestrator_connection.log_info(f"An error occurred during ticket processing: {e}")
+        orchestrator_connection.log_error(f"An error occurred during ticket processing: {e}")
 
 
     if BFEMatch and NovaCaseExists:
-        orchestrator_connection.log_info("BFE matcher opdaterer sagen ")
         orchestrator_connection.log_info(f"Sagen er oprettet, det gamle CaseUuid ligger allerede i databasen: {OldCaseUuid}")
 
         # Define API URL
@@ -478,8 +475,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
 
         # Check status and handle response
         if response.status_code == 200:
-            orchestrator_connection.log_info(f"Sagen er opdateret: {response.status_code}")
-    
+            pass
         else:
             raise Exception(f"API request failed with status {response.status_code}: {response.text}")
      
@@ -492,7 +488,6 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
         JournalUuid = str(uuid.uuid4())
         Index_Uuid = str(uuid.uuid4())
         link_text = "GO Aktindsigtssag"
-        orchestrator_connection.log_info(f"Aktsagsurl: {AktSagsURL}")
         # Step 1: Create a new Word document
         doc = Document()
         doc.add_paragraph("Aktindsigtssag Link: " + AktSagsURL)  # Add content to the document
@@ -786,21 +781,16 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                         ("25. Afslut/henlæg sagen", afslut_sagen_uuid),
                         ("11. Tidsreg: Sagsbehandling", tidsreg_sagsbehandling_uuid),
                     ]
-
                     if all(uuid_val is not None for _, uuid_val in task_uuids):
-                        orchestrator_connection.log_info(f"Alle task-UUIDs fundet på forsøg {attempt}/{max_retries}.")
-                        for task_name, task_uuid in task_uuids:
-                            orchestrator_connection.log_info(f"UUID for '{task_name}': {task_uuid}")
+                        found = ", ".join(f"'{name}': {uuid}" for name, uuid in task_uuids)
+                        orchestrator_connection.log_info(f"Alle task-UUIDs fundet på forsøg {attempt}/{max_retries}: {found}")
                         break  # All tasks found, stop retrying
                     else:
-                        for task_name, task_uuid in task_uuids:
-                            if task_uuid:
-                                orchestrator_connection.log_info(f"UUID for '{task_name}': {task_uuid}")
-                            else:
-                                orchestrator_connection.log_info(f"Missing UUID for task: '{task_name}' (forsøg {attempt}/{max_retries})")
+                        missing = [name for name, uuid in task_uuids if not uuid]
+                        orchestrator_connection.log_info(f"Mangler UUID for {missing} (forsøg {attempt}/{max_retries})")
+
                 else:
-                    orchestrator_connection.log_info(f"Failed to fetch task data. Status code: {str(response.status_code)} (forsøg {attempt}/{max_retries})")
-                    orchestrator_connection.log_info(response.text)
+                    orchestrator_connection.log_info(f"Failed to fetch task data. Status code: {str(response.status_code)} (forsøg {attempt}/{max_retries} {response.text})")
 
             except Exception as e:
                 orchestrator_connection.log_info(f"Fejl under hentning af task-liste (forsøg {attempt}/{max_retries}): {str(e)}")
@@ -869,8 +859,7 @@ def invoke_GenerateNovaCase(Sagsnummer, KMDNovaURL, KMD_access_token, AktSagsURL
                 if response.status_code == 200:
                     orchestrator_connection.log_info(f"{task_name} er igangsat")
                 else: 
-                    orchestrator_connection.log_info(str(response.status_code))
-                    orchestrator_connection.log_info(response.text)
+                    orchestrator_connection.log_info(f'{response.status_code}, {response.text}')
             except Exception as e:
                 raise Exception("Failed to update task:", str(e))
             

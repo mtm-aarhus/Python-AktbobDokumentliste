@@ -365,7 +365,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
                     if len(Dokumenttitel) < 2:
                         Dokumenttitel = item.get("FileLeafRef.Name", "")
                     if str(AktID).strip() == '0':
-                        orchestrator_connection.log_info('0 dokument detekteret')
                         nul_dokument = True
 
 
@@ -965,9 +964,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
         except Exception as e:
             print(f"Failed to send success email: {e}")
 
-    if log:
-        orchestrator_connection.log_info("Sending email")
-
     # Encode folder names for URL safety
     Mappe1_encoded = quote(Mappe1)
     Mappe2_encoded = quote(Mappe2)
@@ -980,9 +976,6 @@ def process(orchestrator_connection: OrchestratorConnection, queue_element: Queu
     if send_email and tom_sag is True:
         send_sag_empty_email(MailModtager, SagsID)
         orchestrator_connection.log_info('Email sent of empty case')
-
-    if log:
-        orchestrator_connection.log_info("Tilføjer link til Podio")
 
     # API Headers
     headers = {
